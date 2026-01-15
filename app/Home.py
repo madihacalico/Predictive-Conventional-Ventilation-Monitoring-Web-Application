@@ -42,8 +42,22 @@ def load_feature_names():
 model = load_model()
 feature_names = load_feature_names()
 
-# To connect to database
-conn = st.connection("sql")
+# --- DATABASE CONNECTION USING ST.CONNECTION ---
+# Reads PostgreSQL connection string from .streamlit/secrets.toml
+# [connections.sql]
+# url = "postgresql://postgres:YOUR_PASSWORD@db.YOUR_PROJECT_REF.supabase.co:5432/postgres"
+
+db_connected = False  # define before try
+db_error = None
+
+try:
+    conn = st.connection("sql")  # no extra type/url needed
+    initialize_db(conn)           # pass connection to init function
+    # Test connection with a simple query
+    conn.execute(text("SELECT 1"))
+    db_connected = True
+except Exception as e:
+    db_error = str(e)
 
 # Home Page Content
 
@@ -79,12 +93,7 @@ with st.expander("Model Information"):
 
 with st.expander("Database Status"):
     if db_connected:
-        # Simple test query
-        try:
-            conn.execute(text("SELECT 1"))
-            st.success("Connected to Supabase database ✅")
-        except Exception as e:
-            st.error(f"Database connection failed: {e}")
+        st.success("Connected to Supabase database ✅")
     else:
         st.error(f"Database connection failed: {db_error}")
 
