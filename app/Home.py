@@ -42,19 +42,8 @@ def load_feature_names():
 model = load_model()
 feature_names = load_feature_names()
 
-# --- DATABASE CONNECTION USING ST.CONNECTION ---
-# This will read from .streamlit/secrets.toml
-# [connections.supabase]
-# SUPABASE_URL = "xxxx"
-# SUPABASE_KEY = "xxxx"
-
-try:
-    conn = st.connection("sql")  # Reads URL from secrets.toml
-    initialize_db(conn)          # Pass connection to init function
-    db_connected = True
-except Exception as e:
-    db_connected = False
-    db_error = str(e)
+# To connect to database
+conn = st.connection("sql")
 
 # Home Page Content
 
