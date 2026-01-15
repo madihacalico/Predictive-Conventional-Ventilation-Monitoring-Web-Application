@@ -44,22 +44,16 @@ model = load_model()
 feature_names = load_feature_names()
 
 # -------------------------------
-# Create SupabaseConnection instance
+# Create a cached Supabase connection
 # -------------------------------
-@st.cache_resource
-def get_supabase_connection():
-    # Create the Supabase connection object
-    _connection = SupabaseConnection(
-        connection_name="supabase_conn",
-        url=st.secrets["connections"]["supabase"]["SUPABASE_URL"],
-        key=st.secrets["connections"]["supabase"]["SUPABASE_KEY"]
-    )
-    return st.connection("sql", connection=_connection)
-
-# -------------------------------
-# Get connection
-# -------------------------------
-conn = get_supabase_connection()
+conn = st.connection(
+    "sql",
+    type=SupabaseConnection,
+    url=st.secrets["connections"]["supabase"]["SUPABASE_URL"],
+    key=st.secrets["connections"]["supabase"]["SUPABASE_KEY"],
+    connection_name="supabase_conn",
+    ttl=0
+)
 
 # Home Page Content
 
