@@ -1,3 +1,4 @@
 # dependency file
 # what to pip install into cloud environment
 joblib
+sklearn
