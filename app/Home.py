@@ -50,8 +50,8 @@ conn = st.connection(
     "sql",
     connection=SupabaseConnection(
         connection_name="supabase_conn",
-        supabase_url=st.secrets["connections"]["supabase"]["SUPABASE_URL"],
-        supabase_key=st.secrets["connections"]["supabase"]["SUPABASE_KEY"]
+        url=st.secrets["connections"]["supabase"]["SUPABASE_URL"],
+        key=st.secrets["connections"]["supabase"]["SUPABASE_KEY"]
     ),
     ttl=0  # optional: disables TTL expiration for caching
 )
