@@ -24,7 +24,7 @@ conn = create_connection()
 patients_list = get_all_patients(conn)
 
 if not patients_list:
-    st.warning("No patients found. Please add a patient first in Page 1.")
+    st.warning("No patients found. Please add a patient first in Add Patient page.")
     st.stop()
 
 patient_id = st.selectbox("Select Patient", patients_list)
