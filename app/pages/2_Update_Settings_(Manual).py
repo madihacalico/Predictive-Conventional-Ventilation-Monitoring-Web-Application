@@ -1,25 +1,19 @@
-# pages/2_Update_Settings.py
-# for streamlit deployment: add root/ to python's import path at runtime
-import sys
-from pathlib import Path
-
-ROOT_DIR = Path(__file__).resolve().parents[1]
-sys.path.append(str(ROOT_DIR))
+# pages/3_Update_Settings_(Manual).py
 
 import streamlit as st
 
-from utils.feature_engineering import generate_mock_observed_data, compute_derived_features
+from utils.feature_engineering import compute_derived_features
 from utils.preprocessing import prepare_input_features
 from utils.prediction import predict_outcomes
 from database import create_connection, add_vent_settings, add_observed_data, get_all_patients, add_prediction
-# ---------- Page UI ----------
-st.set_page_config(page_title="Update Settings", layout="wide")
-st.title("🔧 Update Ventilation Settings")
-st.subheader("Add ventilation settings for each 15-minute interval")
 
+# ---------- Page UI ----------
+st.set_page_config(page_title="Update Settings (Manual Test)", layout="wide")
+st.title("🔧 Update Ventilation Settings (Manual Observed Data)")
+st.markdown("Purpose of this page: For test users to evaluate model performance accuracy using manually added observed data.")
+st.subheader("Add ventilation settings and manually enter observed values for each 15-minute interval")
 
 # ---------- Load patient list ----------
-# Initialize database connection
 conn = create_connection()
 patients_list = get_all_patients(conn)
 
@@ -30,43 +24,69 @@ if not patients_list:
 patient_id = st.selectbox("Select Patient", patients_list)
 
 # ---------- Ventilation Input Form ----------
-st.markdown("### Enter Ventilation Settings")
+st.markdown("### Enter Ventilation Settings & Observed Values")
 
-with st.form("vent_settings_form"):
-
-    intervals = list(range(0, 241, 15))  # 0, 15, 30, ..., 240
+with st.form("vent_settings_form_manual"):
+    st.markdown("#### Ventilation settings")
+    intervals = list(range(0, 241, 15))
     time_input = st.selectbox("Time (t in minutes)", intervals)
 
     col1, col2, col3 = st.columns(3)
-
     with col1:
-        tv_setting = st.number_input("tv_Setting (mL)", min_value=0, value=400)
-
+        tv_setting = st.number_input("TV Setting (mL)", min_value=0, value=400)
     with col2:
         fio2 = st.number_input("FiO2 (0.0 - 1.0)", min_value=0.0, max_value=1.0, step=0.01)
-
     with col3:
         ventilator_rate = st.number_input("Ventilator Rate (bpm)", min_value=0)
 
     col4, col5, col6 = st.columns(3)
-
     with col4:
-        ie_ratio = st.text_input("IE_Ratio (Format int:int)", value="1:2")
-
+        ie_ratio = st.text_input("IE Ratio (Format int:int)", value="1:2")
     with col5:
         peep = st.number_input("PEEP (cmH₂O)", min_value=0)
-
     with col6:
         ps = st.number_input("PS (cmH₂O)", min_value=0)
+    
+    st.markdown("#### Observed data at time = t")
+    #First row
+    col7, col8, col9, col10 = st.columns(4)
+    with col7:
+        tv = st.number_input("TV (mL)", min_value=0)
+        generated_mv = st.number_input("Generated MV (L/min)", min_value=0.0, step=0.1)
+    with col8:
+        etco2 = st.number_input("ETCO₂ (mmHg)", min_value=0.0, step=0.1)
+        ppeak = st.number_input("Ppeak (cmH₂O)", min_value=0.0, step=0.1)
+    with col9:
+        spo2 = st.number_input("SpO₂ (%)", min_value=0.0, max_value=100.0, step=0.1)
+        sbp = st.number_input("SBP (mmHg)", min_value=0)
+    with col10:
+        pplat = st.number_input("Pplat (cmH₂O)", min_value=0.0, step=0.1)
+        dbp = st.number_input("DBP (mmHg)", min_value=0)
+    
+    # Second row
+    col11, col12, col13, col14 = st.columns(4)
+    with col11:
+        hr = st.number_input("Heart Rate (bpm)", min_value=0)
+        rr = st.number_input("Respiratory Rate (bpm)", min_value=0)
+    with col12:
+        ph = st.number_input("pH", min_value=6.8, max_value=7.8, step=0.01)
+        po2 = st.number_input("pO₂ (mmHg)", min_value=0.0, step=0.1)
+    with col13:
+        pco2 = st.number_input("pCO₂ (mmHg)", min_value=0.0, step=0.1)
+        hco3 = st.number_input("HCO₃⁻ (mEq/L)", min_value=0.0, step=0.1)
+    with col14:
+        be = st.number_input("Base Excess (mmol/L)", min_value=-10.0, max_value=10.0, step=0.1)
+        lactate = st.number_input("Lactate (mmol/L)", min_value=0.0, step=0.1)
+
 
     submitted = st.form_submit_button("➕ Add Data")
-
 
 # ---------- Process Form Submission ----------
 if submitted:
     valid = True
     error_messages = []
 
+    # Validate I:E ratio
     try:
         parts = ie_ratio.split(":")
         if len(parts) != 2 or not all(part.isdigit() and int(part) > 0 for part in parts):
@@ -75,24 +95,22 @@ if submitted:
         valid = False
         error_messages.append("I:E Ratio must be in format 'int:int', e.g., 1:2, both positive integers.")
 
-    # --- Check if valid before submission ---
     if not valid:
         for msg in error_messages:
             st.error(msg)
     else:
-        # --- Check for duplicate time interval ---
-        query = """
-        SELECT COUNT(*) FROM vent_settings
-        WHERE patient_id = ? AND time = ?
-        """
+        # Check for duplicate time interval
         cursor = conn.cursor()
-        cursor.execute(query, (patient_id, int(time_input)))
+        cursor.execute(
+            "SELECT COUNT(*) FROM vent_settings WHERE patient_id = ? AND time = ?",
+            (patient_id, int(time_input)),
+        )
         result = cursor.fetchone()[0]
 
         if result > 0:
             st.error(f"Ventilation data for patient {patient_id} at time {time_input} already exists!")
         else:
-            # Store D (vent settings)
+            # --- Store ventilation settings ---
             vent_data = {
                 "patient_id": patient_id,
                 "time": int(time_input),
@@ -110,29 +128,44 @@ if submitted:
             except Exception as e:
                 st.error(f"Error adding ventilation settings: {e}")
 
-            # ---------- E: Generate mock observed data ----------
-            # observed_df = generate_mock_observed_data(patient_id, vent_data)
-            observed_data = generate_mock_observed_data(patient_id, vent_data["time"], conn)
+            # --- Store manually entered observed data ---
+            observed_data = {
+              "patient_id": patient_id,
+              "time": int(time_input),
+              "generated_mv": generated_mv,
+              "ppeak": ppeak,
+              "sbp": sbp,
+              "dbp": dbp,
+              "hr": hr,
+              "rr": rr,
+              "ph": ph,
+              "po2": po2,
+              "pco2": pco2,
+              "hco3": hco3,
+              "be": be,
+              "lactate": lactate,
+              "tv": tv,
+              "etco2": etco2,
+              "spo2": spo2,
+              "pplat": pplat
+            }
 
             add_observed_data(conn, observed_data)
-            st.success("Mock data generated and added to table!")
+            st.success("Observed data added to table!")
 
-            # ---------- F: Derived features ----------
+            # --- Derived features ---
             derived_data = compute_derived_features(patient_id, observed_data, conn)
 
-            # ---------- Prepare full feature vector A-F ----------
+            # --- Prepare full feature vector ---
             full_features = prepare_input_features(patient_id, time_input, conn)
 
-            # ---------- Predict G ----------
+            # --- Predict ---
             predictions = predict_outcomes(full_features)
-            # Store G
             add_prediction(conn, patient_id, time_input, predictions)
-
             st.success("Predictions generated and saved!")
 
-            # ---------- Alert Trigger ----------
+            # --- Alert Trigger ---
             out_of_range = []
-
             if predictions["tv_in_range_next"] == 0:
                 out_of_range.append("Tidal Volume (TV)")
             if predictions["etco2_in_range_next"] == 0:
@@ -151,6 +184,5 @@ if submitted:
                 st.info("All parameters predicted to remain within range.")
 
             st.info("Dashboard updated with new interval.")
-
 
 conn.close()

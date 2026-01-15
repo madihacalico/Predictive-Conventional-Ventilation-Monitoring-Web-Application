@@ -1,6 +1,13 @@
 
 # Home.py: home page/landing page
-# to run file: streamlit run Home.py
+# to run file: streamlit run app/Home.py
+
+# for streamlit deployment: add root/ to python's import path at runtime
+import sys
+from pathlib import Path
+
+ROOT_DIR = Path(__file__).resolve().parents[1]
+sys.path.append(str(ROOT_DIR))
 
 import streamlit as st
 import joblib
