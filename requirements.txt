@@ -4,3 +4,4 @@ joblib
 scikit-learn
 plotly
 sqlalchemy
+st-supabase-connection
