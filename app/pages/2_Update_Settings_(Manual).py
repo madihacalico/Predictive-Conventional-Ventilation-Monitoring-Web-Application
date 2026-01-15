@@ -24,10 +24,10 @@ if not patients_list:
 patient_id = st.selectbox("Select Patient", patients_list)
 
 # ---------- Ventilation Input Form ----------
-st.markdown("### Enter Ventilation Settings")
+st.markdown("### Enter Ventilation Settings & Observed Values")
 
 with st.form("vent_settings_form_manual"):
-
+    st.markdown("#Ventilation settings")
     intervals = list(range(0, 241, 15))
     time_input = st.selectbox("Time (t in minutes)", intervals)
 
@@ -46,11 +46,8 @@ with st.form("vent_settings_form_manual"):
         peep = st.number_input("PEEP (cmH₂O)", min_value=0)
     with col6:
         ps = st.number_input("PS (cmH₂O)", min_value=0)
-        
-# ---------- Ventilation Input Form ----------
-st.markdown("### Enter Observed Values")
-
-with st.form("observed_values_form_manual"):
+    
+    st.markdown("#Observed data at time = t")
     #First row
     col7, col8, col9, col10 = st.columns(4)
     with col7:
