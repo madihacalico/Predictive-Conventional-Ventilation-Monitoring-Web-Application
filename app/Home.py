@@ -46,15 +46,7 @@ feature_names = load_feature_names()
 # -------------------------------
 # Create or get a cached Supabase connection
 # -------------------------------
-conn = st.connection(
-    "sql",
-    connection=SupabaseConnection(
-        connection_name="supabase_conn",
-        url=st.secrets["connections"]["supabase"]["SUPABASE_URL"],
-        key=st.secrets["connections"]["supabase"]["SUPABASE_KEY"]
-    ),
-    ttl=0  # optional: disables TTL expiration for caching
-)
+conn = st.connection("supabase",type=SupabaseConnection)
 
 # Home Page Content
 
