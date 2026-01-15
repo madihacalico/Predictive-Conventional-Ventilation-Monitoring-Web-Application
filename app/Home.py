@@ -49,6 +49,7 @@ feature_names = load_feature_names()
 conn = st.connection(
     "sql",
     connection=SupabaseConnection(
+        connection_name="supabase_conn",
         supabase_url=st.secrets["connections"]["supabase"]["SUPABASE_URL"],
         supabase_key=st.secrets["connections"]["supabase"]["SUPABASE_KEY"]
     ),
