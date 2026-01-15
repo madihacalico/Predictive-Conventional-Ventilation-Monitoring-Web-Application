@@ -1,4 +1,10 @@
 # pages/2_Update_Settings.py
+# for streamlit deployment: add root/ to python's import path at runtime
+import sys
+from pathlib import Path
+
+ROOT_DIR = Path(__file__).resolve().parents[1]
+sys.path.append(str(ROOT_DIR))
 
 import streamlit as st
 
