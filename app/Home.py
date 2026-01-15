@@ -46,20 +46,20 @@ feature_names = load_feature_names()
 # -------------------------------
 # Create SupabaseConnection instance
 # -------------------------------
-supabase_conn = SupabaseConnection(
-    connection_name="supabase_conn",
-    url=st.secrets["connections"]["supabase"]["SUPABASE_URL"],
-    key=st.secrets["connections"]["supabase"]["SUPABASE_KEY"]
-)
+@st.cache_resource
+def get_supabase_connection():
+    # Create the Supabase connection object
+    _connection = SupabaseConnection(
+        connection_name="supabase_conn",
+        url=st.secrets["connections"]["supabase"]["SUPABASE_URL"],
+        key=st.secrets["connections"]["supabase"]["SUPABASE_KEY"]
+    )
+    return st.connection("sql", connection=_connection)
 
 # -------------------------------
-# Use Streamlit's cached connection
+# Get connection
 # -------------------------------
-conn = st.connection(
-    "sql",
-    connection=supabase_conn,
-    ttl=0  # optional: disables cache expiration
-)
+conn = get_supabase_connection()
 
 # Home Page Content
 
