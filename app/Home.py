@@ -14,6 +14,8 @@ import joblib
 import os
 from database import initialize_db
 from database_correction import correct_database
+from st_supabase_connection import SupabaseConnection
+from sqlalchemy import text
 
 # Initial Setup
 st.set_page_config(
@@ -41,13 +43,17 @@ def load_feature_names():
 model = load_model()
 feature_names = load_feature_names()
 
-# Database Connection
-
-DB_PATH = "ventilation.db"
-
-initialize_db()
-# comment line below if no database correction needed
-# correct_database()
+# -------------------------------
+# Create or get a cached Supabase connection
+# -------------------------------
+conn = st.connection(
+    "sql",
+    connection=SupabaseConnection(
+        supabase_url=st.secrets["connections"]["supabase"]["https://mmsdcviyuqvoqvvlhrdd.supabase.co"],
+        supabase_key=st.secrets["connections"]["supabase"]["sb_publishable_iIB0OjeKR7lxyT-lTa6fcw_k4TbTSib"]
+    ),
+    ttl=0  # optional: disables TTL expiration for caching
+)
 
 # Home Page Content
 
@@ -82,10 +88,11 @@ with st.expander("Model Information"):
 # Database check
 
 with st.expander("Database Status"):
-    if os.path.exists(DB_PATH):
-        st.success(f"Database located at: {DB_PATH}")
-    else:
-        st.error("Database not created yet.")
+    try:
+        conn.execute(text("SELECT 1"))  # simple test query
+        st.success("Connected to Supabase database ✅")
+    except Exception as e:
+        st.error(f"Database connection failed: {e}")
 
 st.markdown("---")
 st.info("Go to the sidebar to begin.")
