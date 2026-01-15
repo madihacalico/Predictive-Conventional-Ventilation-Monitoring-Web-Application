@@ -49,8 +49,8 @@ feature_names = load_feature_names()
 conn = st.connection(
     "sql",
     connection=SupabaseConnection(
-        supabase_url=st.secrets["connections"]["supabase"]["https://mmsdcviyuqvoqvvlhrdd.supabase.co"],
-        supabase_key=st.secrets["connections"]["supabase"]["sb_publishable_iIB0OjeKR7lxyT-lTa6fcw_k4TbTSib"]
+        supabase_url=st.secrets["connections"]["supabase"]["SUPABASE_URL"],
+        supabase_key=st.secrets["connections"]["supabase"]["SUPABASE_KEY"]
     ),
     ttl=0  # optional: disables TTL expiration for caching
 )
