@@ -360,11 +360,10 @@ if y_score_rf is not None:
 # save rf model
 import joblib
 
-joblib.dump(model_pipeline, r".venv\model\ventilation_model_v2.pkl")
+joblib.dump(model_pipeline, r"model\ventilation_model_v2.pkl")
 
 # save feature names
 import json
 
-with open(r".venv\model\feature_names_v2.json", "w") as f:
+with open(r"model\feature_names_v2.json", "w") as f:
     json.dump(model_pipeline.feature_names_in_.tolist(), f)
-
