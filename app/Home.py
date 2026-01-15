@@ -14,7 +14,6 @@ import joblib
 import os
 from database import initialize_db
 from database_correction import correct_database
-from st_supabase_connection import SupabaseConnection
 from sqlalchemy import text
 
 # Initial Setup
@@ -43,17 +42,19 @@ def load_feature_names():
 model = load_model()
 feature_names = load_feature_names()
 
-# -------------------------------
-# Create a cached Supabase connection
-# -------------------------------
-conn = st.connection(
-    "sql",
-    type=SupabaseConnection,
-    url=st.secrets["connections"]["supabase"]["SUPABASE_URL"],
-    key=st.secrets["connections"]["supabase"]["SUPABASE_KEY"],
-    connection_name="supabase_conn",
-    ttl=0
-)
+# --- DATABASE CONNECTION USING ST.CONNECTION ---
+# This will read from .streamlit/secrets.toml
+# [connections.supabase]
+# SUPABASE_URL = "xxxx"
+# SUPABASE_KEY = "xxxx"
+
+try:
+    conn = st.connection("sql")  # Reads URL from secrets.toml
+    initialize_db(conn)          # Pass connection to init function
+    db_connected = True
+except Exception as e:
+    db_connected = False
+    db_error = str(e)
 
 # Home Page Content
 
@@ -88,11 +89,15 @@ with st.expander("Model Information"):
 # Database check
 
 with st.expander("Database Status"):
-    try:
-        conn.execute(text("SELECT 1"))  # simple test query
-        st.success("Connected to Supabase database ✅")
-    except Exception as e:
-        st.error(f"Database connection failed: {e}")
+    if db_connected:
+        # Simple test query
+        try:
+            conn.execute(text("SELECT 1"))
+            st.success("Connected to Supabase database ✅")
+        except Exception as e:
+            st.error(f"Database connection failed: {e}")
+    else:
+        st.error(f"Database connection failed: {db_error}")
 
 st.markdown("---")
 st.info("Go to the sidebar to begin.")
