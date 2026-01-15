@@ -1,0 +1,95 @@
+# utils/preprocessing.py
+
+import pandas as pd
+import json
+import os
+
+# Load the feature names used during training
+# FEATURES_PATH = "model/feature_names.json"
+FEATURES_PATH = "model/feature_names_v2.json"
+
+if not os.path.exists(FEATURES_PATH):
+    raise FileNotFoundError(f"{FEATURES_PATH} not found. Ensure it is saved during training.")
+
+with open(FEATURES_PATH, "r") as f:
+    TRAIN_FEATURES = json.load(f)
+
+def prepare_input_features(patient_id, time, conn):
+    """
+    Build a single feature vector (A–F) for prediction.
+
+    Returns:
+        dict: raw feature values keyed by feature name
+    """
+
+    # ---------- Load patient data ----------
+    patient_df = pd.read_sql_query(
+        "SELECT * FROM patients WHERE patient_id = ?",
+        conn, params=(patient_id,)
+    )
+    if patient_df.empty:
+        raise ValueError(f"No patient found for {patient_id}")
+    patient = patient_df.iloc[0]
+
+    # ---------- Load vent settings ----------
+    vent_df = pd.read_sql_query(
+        "SELECT * FROM vent_settings WHERE patient_id = ? AND time = ?",
+        conn, params=(patient_id, time)
+    )
+    if vent_df.empty:
+        raise ValueError(f"No vent settings for {patient_id} at time {time}")
+    vent = vent_df.iloc[0]
+
+    # ---------- Load observed data ----------
+    obs_df = pd.read_sql_query(
+        "SELECT * FROM observed_data WHERE patient_id = ? AND time = ?",
+        conn, params=(patient_id, time)
+    )
+    if obs_df.empty:
+        raise ValueError(f"No observed data for {patient_id} at time {time}")
+    obs = obs_df.iloc[0]
+
+    # ---------- Load derived features ----------
+    derived_df = pd.read_sql_query(
+        "SELECT * FROM derived_features WHERE patient_id = ? AND time = ?",
+        conn, params=(patient_id, time)
+    )
+    if derived_df.empty:
+        raise ValueError(f"No derived features for {patient_id} at time {time}")
+    derived = derived_df.iloc[0]
+
+    # ---------- Merge all features ----------
+    features = {}
+    features.update(patient.to_dict())
+    features.update(vent.to_dict())
+    features.update(obs.to_dict())
+    features.update(derived.to_dict())
+
+    # ---------- Remove non-feature columns ----------
+    # Keep only columns that are in TRAIN_FEATURES
+    features = {k: v for k, v in features.items() if k in TRAIN_FEATURES}
+
+    return features
+
+def preprocess_data(input_dict):
+    """
+    Prepare incoming raw feature values for the prediction pipeline.
+
+    - Converts dictionary to DataFrame
+    - Ensures correct column order based on training features
+    - Fills any missing required fields with None (pipeline will handle them)
+    - Does NOT scale, encode, or transform anything — the Pipeline handles it.
+    """
+
+    # Convert input to DataFrame
+    df = pd.DataFrame([input_dict])
+
+    # Ensure all expected columns exist (missing columns will be set to None)
+    for col in TRAIN_FEATURES:
+        if col not in df.columns:
+            df[col] = None
+
+    # Reorder columns to match training order
+    df = df[TRAIN_FEATURES]
+
+    return df
