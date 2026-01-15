@@ -2,3 +2,4 @@
 # what to pip install into cloud environment
 joblib
 scikit-learn
+plotly
