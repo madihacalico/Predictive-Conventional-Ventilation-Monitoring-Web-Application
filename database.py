@@ -1,28 +1,17 @@
 # database.py
 # Handles all database interactions for the Ventilation Prediction System
 
-import sqlite3
-from sqlite3 import Error
-import os
+from sqlalchemy import text
 
 DB_PATH = "ventilation.db"
 
-def create_connection() -> sqlite3.Connection:
-    """Create a database connection to the SQLite database"""
-    try:
-        conn = sqlite3.connect(DB_PATH, check_same_thread=False)
-        return conn
-    except sqlite3.Error as e:
-        raise RuntimeError(f"Failed to connect to database: {e}")
-
-
-def initialize_db():
-    """Create tables if they don't exist"""
-    conn = create_connection()
-    cursor = conn.cursor()
-
+def initialize_db(conn):
+    """
+    Create tables if they don't exist
+    Expects a SQLAlchemy connection object from st.connection("sql").
+    """
     # Table for patient profile (A + B + C): patients
-    cursor.execute("""
+    conn.execute(text("""
         CREATE TABLE IF NOT EXISTS patients (
             patient_id TEXT PRIMARY KEY,
             gender TEXT,
@@ -55,10 +44,10 @@ def initialize_db():
             max_pplat REAL,
             UNIQUE(patient_id)
         )
-    """)
+    """))
 
     # Table for ventilation settings (D): vent_settings
-    cursor.execute("""
+    conn.execute(text("""
         CREATE TABLE IF NOT EXISTS vent_settings (
             patient_id TEXT,
             time INTEGER,
@@ -71,10 +60,10 @@ def initialize_db():
             UNIQUE(patient_id, time),
             FOREIGN KEY(patient_id) REFERENCES patients(patient_id)
         )
-    """)
+    """))
 
     # Table for observed/mock data (E): observed_data
-    cursor.execute("""
+    conn.execute(text("""
         CREATE TABLE IF NOT EXISTS observed_data (
             patient_id TEXT,
             time INTEGER,
@@ -96,10 +85,10 @@ def initialize_db():
             pplat REAL,
             FOREIGN KEY(patient_id) REFERENCES patients(patient_id)
         )
-    """)
+    """))
 
     # Table for derived features (F): derived_features
-    cursor.execute("""
+    conn.execute(text("""
         CREATE TABLE IF NOT EXISTS derived_features (
             patient_id TEXT,
             time INTEGER,
@@ -141,10 +130,10 @@ def initialize_db():
             ie_ratio_numeric,
             FOREIGN KEY(patient_id) REFERENCES patients(patient_id)
         )
-    """)
+    """))
 
     # Table for predictions/output (G)
-    cursor.execute("""
+    conn.execute(text("""
         CREATE TABLE IF NOT EXISTS predictions (
             patient_id TEXT,
             time INTEGER,
@@ -154,10 +143,10 @@ def initialize_db():
             pplat_in_range_next INTEGER,
             FOREIGN KEY(patient_id) REFERENCES patients(patient_id)
         )
-    """)
+    """))
 
-    conn.commit()
-    return conn
+    # conn.commit()
+    # return conn
 
 # ----------------- CRUD Functions ----------------- #
 
@@ -166,65 +155,56 @@ def add_patient(conn, patient_data: dict):
     """
     patient_data: dictionary containing A+B+C fields
     """
-    cursor = conn.cursor()
-    placeholders = ", ".join(["?"] * len(patient_data))
     columns = ", ".join(patient_data.keys())
-
+    values = ", ".join([f":{k}" for k in patient_data.keys()])
     # Columns to update (exclude keys used for uniqueness)
-    update_cols = [col for col in patient_data.keys() if col not in ("patient_id")]
+    update_cols = [k for k in patient_data.keys() if k != "patient_id"]
     update_clause = ", ".join([f"{col}=excluded.{col}" for col in update_cols])
 
     sql = f"""
     INSERT INTO patients ({columns}) 
-    VALUES ({placeholders})
+    VALUES ({values})
     ON CONFLICT(patient_id)
     DO UPDATE SET
     {update_clause}
     """
 
-    cursor.execute(sql, tuple(patient_data.values()))
-    conn.commit()
+    conn.execute(text(sql), patient_data)
 
 # Add ventilation settings
 def add_vent_settings(conn, vent_data: dict):
     """
     vent_data: dictionary containing patient_id, time, and D fields
     """
-    cursor = conn.cursor()
-    placeholders = ", ".join(["?"] * len(vent_data))
     columns = ", ".join(vent_data.keys())
-
+    values = ", ".join([f":{k}" for k in vent_data.keys()])
     # Columns to update (exclude keys used for uniqueness)
-    update_cols = [col for col in vent_data.keys() if col not in ("patient_id", "time")]
+    update_cols = [k for k in vent_data.keys() if k not in ("patient_id", "time")]
     update_clause = ", ".join([f"{col}=excluded.{col}" for col in update_cols])
 
     sql = f"""
     INSERT INTO vent_settings ({columns}) 
-    VALUES ({placeholders})
+    VALUES ({values})
     ON CONFLICT(patient_id, time)
     DO UPDATE SET
     {update_clause}
     """
 
-    cursor.execute(sql, tuple(vent_data.values()))
-    conn.commit()
+    conn.execute(text(sql), vent_data)
 
 # Add observed data
 def add_observed_data(conn, observed_data: dict):
     """
     observed_data: dictionary containing patient_id, time, and E fields
     """
-    cursor = conn.cursor()
-    placeholders = ", ".join(["?"] * len(observed_data))
     columns = ", ".join(observed_data.keys())
-
+    values = ", ".join([f":{k}" for k in observed_data.keys()])
     sql = f"""
     INSERT INTO observed_data ({columns}) 
-    VALUES ({placeholders})
+    VALUES ({values})
     """
 
-    cursor.execute(sql, tuple(observed_data.values()))
-    conn.commit()
+    conn.execute(text(sql), observed_data)
 
 # Add derived features
 def add_derived_features(conn, derived_features: dict):
@@ -232,17 +212,15 @@ def add_derived_features(conn, derived_features: dict):
     derived_features: dictionary containing patient_id, time, and F fields
     """
 
-    cursor = conn.cursor()
-    placeholders = ", ".join(["?"] * len(derived_features))
     columns = ", ".join(derived_features.keys())
+    values = ", ".join([f":{k}" for k in derived_features.keys()])
 
     sql = f"""
     INSERT INTO derived_features ({columns}) 
-    VALUES ({placeholders})
+    VALUES ({values})
     """
 
-    cursor.execute(sql, tuple(derived_features.values()))
-    conn.commit()
+    conn.execute(text(sql), derived_features)
 
 # Add predictions
 def add_prediction(conn, patient_id: str, time: int, prediction_data: dict):
@@ -252,54 +230,38 @@ def add_prediction(conn, patient_id: str, time: int, prediction_data: dict):
     # Combine patient_id, time, and predictions into a single dictionary
     data_to_insert = {"patient_id": patient_id, "time": time, **prediction_data}
 
-    cursor = conn.cursor()
-    placeholders = ", ".join(["?"] * len(data_to_insert))
     columns = ", ".join(data_to_insert.keys())
-    sql = f"INSERT INTO predictions ({columns}) VALUES ({placeholders})"
-    cursor.execute(sql, tuple(data_to_insert.values()))
-    conn.commit()
+    values = ", ".join([f":{k}" for k in data_to_insert.keys()])
+
+    sql = f"INSERT INTO predictions ({columns}) VALUES ({values})"
+    conn.execute(text(sql), data_to_insert)
 
 # Get list of patients
 def get_all_patients(conn):
-    cursor = conn.cursor()
-    cursor.execute("SELECT patient_id FROM patients")
-    rows = cursor.fetchall()
-    return [row[0] for row in rows]
+    result = conn.execute(text("SELECT patient_id FROM patients"))
+    return [row[0] for row in result.fetchall()]
 
 # Get patient data
 def get_patient_data(conn, patient_id):
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM patients WHERE patient_id=?", (patient_id,))
-    return cursor.fetchone()
+    result = conn.execute(text("SELECT * FROM patients WHERE patient_id=:patient_id"), {"patient_id": patient_id})
+    return result.fetchone()
 
 # Get ventilation history for patient
 def get_ventilation_history(conn, patient_id):
-    cursor = conn.cursor()
-    cursor.execute("""
-        SELECT * FROM vent_settings
-        WHERE patient_id=?
-        ORDER BY time ASC
-    """, (patient_id,))
-    return cursor.fetchall()
+    sql = "SELECT * FROM vent_settings WHERE patient_id=:patient_id ORDER BY time ASC"
+    result = conn.execute(text(sql), {"patient_id": patient_id})
+    return result.fetchall()
 
 # Get observed data for patient
 def get_observed_history(conn, patient_id):
-    cursor = conn.cursor()
-    cursor.execute("""
-        SELECT * FROM observed_data
-        WHERE patient_id=?
-        ORDER BY time ASC
-    """, (patient_id,))
-    return cursor.fetchall()
+    sql = "SELECT * FROM observed_data WHERE patient_id=:patient_id ORDER BY time ASC"
+    result = conn.execute(text(sql), {"patient_id": patient_id})
+    return result.fetchall()
 
 # Get predictions for patient
 def get_predictions(conn, patient_id):
-    cursor = conn.cursor()
-    cursor.execute("""
-        SELECT * FROM predictions
-        WHERE patient_id=?
-        ORDER BY time ASC
-    """, (patient_id,))
-    return cursor.fetchall()
+    sql = "SELECT * FROM predictions WHERE patient_id=:patient_id ORDER BY time ASC"
+    result = conn.execute(text(sql), {"patient_id": patient_id})
+    return result.fetchall()
 
 # ----------------- End of database.py ----------------- #
