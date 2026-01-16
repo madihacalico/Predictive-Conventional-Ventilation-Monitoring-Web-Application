@@ -13,7 +13,6 @@ import streamlit as st
 import joblib
 import os
 from database import initialize_db
-from database_correction import correct_database
 from sqlalchemy import text
 
 # Initial Setup
