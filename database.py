@@ -35,7 +35,7 @@ def add_vent_settings(supabase: Client, vent_data: dict):
         on_conflict=["patient_id", "time_interval"]  # unique constraint on patient_id + time
     ).execute()
     
-    return response.data
+    return response
 
 # Add observed data
 def add_observed_data(supabase: Client, observed_data: dict):
