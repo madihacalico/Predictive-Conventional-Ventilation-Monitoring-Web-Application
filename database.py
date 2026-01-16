@@ -24,8 +24,12 @@ def add_patient(conn, patient_data: dict):
     {update_clause}
     """
 
-    conn.query(sql, params=patient_data)
-    return True
+    # Execute the query
+    try:
+        conn.query(sql, params=patient_data)
+        return True
+    except Exception as e:
+        raise RuntimeError(f"Failed to add patient: {e}")
 
 # Add ventilation settings
 def add_vent_settings(conn, vent_data: dict):
