@@ -20,11 +20,7 @@ def add_patient(supabase: Client, patient_data: dict):
         on_conflict="patient_id"  # column to check for conflicts
     ).execute()
     
-    # Check for errors
-    if response.error:
-        raise Exception(f"Supabase error: {response.error.message}")
-
-    return response.data  # returns the inserted/updated row(s)
+    return response
 
 # Add ventilation settings
 def add_vent_settings(conn, vent_data: dict):
