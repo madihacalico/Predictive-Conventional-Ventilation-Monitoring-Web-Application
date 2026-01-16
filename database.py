@@ -24,12 +24,7 @@ def add_patient(conn, patient_data: dict):
     {update_clause}
     """
 
-    # Execute the query
-    try:
-        conn.query(sql, params=patient_data)
-        return True
-    except Exception as e:
-        raise RuntimeError(f"Failed to add patient: {e}")
+    conn.execute(text(sql), patient_data)
 
 # Add ventilation settings
 def add_vent_settings(conn, vent_data: dict):
@@ -50,7 +45,7 @@ def add_vent_settings(conn, vent_data: dict):
     {update_clause}
     """
 
-    conn.query(sql, params=vent_data)
+    conn.execute(text(sql), vent_data)
 
 # Add observed data
 def add_observed_data(conn, observed_data: dict):
@@ -64,7 +59,7 @@ def add_observed_data(conn, observed_data: dict):
     VALUES ({values})
     """
 
-    conn.query(sql, params=observed_data)
+    conn.execute(text(sql), observed_data)
 
 # Add derived features
 def add_derived_features(conn, derived_features: dict):
@@ -80,7 +75,7 @@ def add_derived_features(conn, derived_features: dict):
     VALUES ({values})
     """
 
-    conn.query(sql, params=derived_features)
+    conn.execute(text(sql), derived_features)
 
 # Add predictions
 def add_prediction(conn, patient_id: str, time: int, prediction_data: dict):
@@ -94,34 +89,34 @@ def add_prediction(conn, patient_id: str, time: int, prediction_data: dict):
     values = ", ".join([f":{k}" for k in data_to_insert.keys()])
 
     sql = f"INSERT INTO predictions ({columns}) VALUES ({values})"
-    conn.query(sql, params=data_to_insert)
+    conn.execute(text(sql), data_to_insert)
 
-# Get list of patients
-def get_all_patients(conn):
-    result = conn.execute(text("SELECT patient_id FROM patients"))
-    return [row[0] for row in result.fetchall()]
+# # Get list of patients
+# def get_all_patients(conn):
+#     result = conn.execute(text("SELECT patient_id FROM patients"))
+#     return [row[0] for row in result.fetchall()]
 
-# Get patient data
-def get_patient_data(conn, patient_id):
-    result = conn.execute(text("SELECT * FROM patients WHERE patient_id=:patient_id"), {"patient_id": patient_id})
-    return result.fetchone()
+# # Get patient data
+# def get_patient_data(conn, patient_id):
+#     result = conn.execute(text("SELECT * FROM patients WHERE patient_id=:patient_id"), {"patient_id": patient_id})
+#     return result.fetchone()
 
-# Get ventilation history for patient
-def get_ventilation_history(conn, patient_id):
-    sql = "SELECT * FROM vent_settings WHERE patient_id=:patient_id ORDER BY time ASC"
-    result = conn.execute(text(sql), {"patient_id": patient_id})
-    return result.fetchall()
+# # Get ventilation history for patient
+# def get_ventilation_history(conn, patient_id):
+#     sql = "SELECT * FROM vent_settings WHERE patient_id=:patient_id ORDER BY time ASC"
+#     result = conn.execute(text(sql), {"patient_id": patient_id})
+#     return result.fetchall()
 
-# Get observed data for patient
-def get_observed_history(conn, patient_id):
-    sql = "SELECT * FROM observed_data WHERE patient_id=:patient_id ORDER BY time ASC"
-    result = conn.execute(text(sql), {"patient_id": patient_id})
-    return result.fetchall()
+# # Get observed data for patient
+# def get_observed_history(conn, patient_id):
+#     sql = "SELECT * FROM observed_data WHERE patient_id=:patient_id ORDER BY time ASC"
+#     result = conn.execute(text(sql), {"patient_id": patient_id})
+#     return result.fetchall()
 
-# Get predictions for patient
-def get_predictions(conn, patient_id):
-    sql = "SELECT * FROM predictions WHERE patient_id=:patient_id ORDER BY time ASC"
-    result = conn.execute(text(sql), {"patient_id": patient_id})
-    return result.fetchall()
+# # Get predictions for patient
+# def get_predictions(conn, patient_id):
+#     sql = "SELECT * FROM predictions WHERE patient_id=:patient_id ORDER BY time ASC"
+#     result = conn.execute(text(sql), {"patient_id": patient_id})
+#     return result.fetchall()
 
 # ----------------- End of database.py ----------------- #
