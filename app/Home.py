@@ -12,7 +12,8 @@ sys.path.append(str(ROOT_DIR))
 import streamlit as st
 import joblib
 import os
-from sqlalchemy import text
+# from sqlalchemy import text
+from supabase import create_client, Client
 
 # Initial Setup
 st.set_page_config(
@@ -40,21 +41,29 @@ def load_feature_names():
 model = load_model()
 feature_names = load_feature_names()
 
-# --- DATABASE CONNECTION USING ST.CONNECTION ---
+# # --- DATABASE CONNECTION USING ST.CONNECTION ---
 
-db_connected = False
-db_error = None
+# db_connected = False
+# db_error = None
 
-try:
-    conn = st.connection("sql")
+# try:
+#     conn = st.connection("sql")
 
-    # Health check (must use query, not execute)
-    conn.query("SELECT 1")
+#     # Health check (must use query, not execute)
+#     conn.query("SELECT 1")
 
-    db_connected = True
-except Exception as e:
-    db_error = str(e)
+#     db_connected = True
+# except Exception as e:
+#     db_error = str(e)
 
+# Initialize database connection
+@st.cache_resource
+def init_connection():
+    url = st.secrets["SUPABASE_URL"]
+    key = st.secrets["SUPABASE_KEY"]
+    return create_client(url, key)
+
+supabase = init_connection()
 
 # Home Page Content
 
@@ -88,13 +97,23 @@ with st.expander("Model Information"):
 
 # Database check
 
-with st.expander("Database Status"):
-    if db_connected:
-        st.success("Connected to Supabase (PostgreSQL)")
-    else:
-        st.error("Database connection failed")
-        st.code(db_error)
+# with st.expander("Database Status"):
+#     if db_connected:
+#         st.success("Connected to Supabase (PostgreSQL)")
+#     else:
+#         st.error("Database connection failed")
+#         st.code(db_error)
 
+with st.expander("Database Status"):
+    try:
+        response = supabase.table("patients").select("*").limit(1).execute()
+        if response.data is not None:
+            st.success("Connected to Supabase (PostgreSQL)")
+        else:
+            st.warning("Connected but no data found")
+    except Exception as e:
+        st.error("Database connection failed")
+        st.code(str(e))
 
 st.markdown("---")
 st.info("Go to the sidebar to begin.")
