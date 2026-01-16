@@ -11,7 +11,8 @@ import streamlit as st
 from utils.feature_engineering import generate_mock_observed_data, compute_derived_features
 from utils.preprocessing import prepare_input_features
 from utils.prediction import predict_outcomes
-from database import create_connection, add_vent_settings, add_observed_data, get_all_patients, add_prediction
+from database import add_vent_settings, add_observed_data, get_all_patients, add_prediction
+
 # ---------- Page UI ----------
 st.set_page_config(page_title="Update Settings", layout="wide")
 st.title("🔧 Update Ventilation Settings")
@@ -20,8 +21,8 @@ st.subheader("Add ventilation settings for each 15-minute interval")
 
 # ---------- Load patient list ----------
 # Initialize database connection
-conn = create_connection()
-patients_list = get_all_patients(conn)
+supabase = init_connection()
+patients_list = get_all_patients(supabase)
 
 if not patients_list:
     st.warning("No patients found. Please add a patient first in Add Patient page.")
@@ -81,15 +82,8 @@ if submitted:
             st.error(msg)
     else:
         # --- Check for duplicate time interval ---
-        query = """
-        SELECT COUNT(*) FROM vent_settings
-        WHERE patient_id = ? AND time = ?
-        """
-        cursor = conn.cursor()
-        cursor.execute(query, (patient_id, int(time_input)))
-        result = cursor.fetchone()[0]
-
-        if result > 0:
+        existing = supabase.table("vent_settings").select("time").eq("patient_id", patient_id).eq("time", int(time_input)).execute()
+        if existing.data:
             st.error(f"Ventilation data for patient {patient_id} at time {time_input} already exists!")
         else:
             # Store D (vent settings)
@@ -105,28 +99,26 @@ if submitted:
             }
 
             try:
-                add_vent_settings(conn, vent_data)
+                add_vent_settings(supabase, vent_data)
                 st.success(f"Ventilation settings for patient {patient_id} at time {time_input} updated successfully!")
             except Exception as e:
                 st.error(f"Error adding ventilation settings: {e}")
 
             # ---------- E: Generate mock observed data ----------
-            # observed_df = generate_mock_observed_data(patient_id, vent_data)
-            observed_data = generate_mock_observed_data(patient_id, vent_data["time"], conn)
-
-            add_observed_data(conn, observed_data)
+            observed_data = generate_mock_observed_data(patient_id, vent_data["time"], supabase)
+            add_observed_data(supabase, observed_data)
             st.success("Mock data generated and added to table!")
 
             # ---------- F: Derived features ----------
-            derived_data = compute_derived_features(patient_id, observed_data, conn)
+            derived_data = compute_derived_features(patient_id, observed_data, supabase)
 
             # ---------- Prepare full feature vector A-F ----------
-            full_features = prepare_input_features(patient_id, time_input, conn)
+            full_features = prepare_input_features(patient_id, time_input, supabase)
 
             # ---------- Predict G ----------
             predictions = predict_outcomes(full_features)
             # Store G
-            add_prediction(conn, patient_id, time_input, predictions)
+            add_prediction(supabase, patient_id, time_input, predictions)
 
             st.success("Predictions generated and saved!")
 
@@ -151,6 +143,3 @@ if submitted:
                 st.info("All parameters predicted to remain within range.")
 
             st.info("Dashboard updated with new interval.")
-
-
-conn.close()
