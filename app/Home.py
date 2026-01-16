@@ -12,7 +12,6 @@ sys.path.append(str(ROOT_DIR))
 import streamlit as st
 import joblib
 import os
-from database import initialize_db
 from sqlalchemy import text
 
 # Initial Setup
@@ -42,21 +41,20 @@ model = load_model()
 feature_names = load_feature_names()
 
 # --- DATABASE CONNECTION USING ST.CONNECTION ---
-# Reads PostgreSQL connection string from .streamlit/secrets.toml
-# [connections.sql]
-# url = "postgresql://postgres:YOUR_PASSWORD@db.YOUR_PROJECT_REF.supabase.co:5432/postgres"
 
-db_connected = False  # define before try
+db_connected = False
 db_error = None
 
 try:
-    conn = st.connection("sql")  # no extra type/url needed
-    initialize_db(conn)           # pass connection to init function
-    # Test connection with a simple query
-    conn.execute(text("SELECT 1"))
+    conn = st.connection("sql")
+
+    # Health check (must use query, not execute)
+    conn.query("SELECT 1")
+
     db_connected = True
 except Exception as e:
     db_error = str(e)
+
 
 # Home Page Content
 
@@ -92,9 +90,11 @@ with st.expander("Model Information"):
 
 with st.expander("Database Status"):
     if db_connected:
-        st.success("Connected to Supabase database ✅")
+        st.success("Connected to Supabase (PostgreSQL)")
     else:
-        st.error(f"Database connection failed: {db_error}")
+        st.error("Database connection failed")
+        st.code(db_error)
+
 
 st.markdown("---")
 st.info("Go to the sidebar to begin.")
