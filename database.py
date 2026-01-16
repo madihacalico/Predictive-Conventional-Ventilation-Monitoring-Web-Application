@@ -32,7 +32,7 @@ def add_vent_settings(supabase: Client, vent_data: dict):
     """
     response = supabase.table("vent_settings").upsert(
         vent_data,        # data to insert or update
-        on_conflict=["patient_id", "time_interval"]  # unique constraint on patient_id + time
+        on_conflict=("patient_id","time_interval")  # unique constraint on patient_id + time
     ).execute()
     
     return response
