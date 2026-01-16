@@ -24,7 +24,7 @@ def add_patient(conn, patient_data: dict):
     {update_clause}
     """
 
-    conn.execute(text(sql), patient_data)
+    conn.query(sql, params=patient_data)
 
 # Add ventilation settings
 def add_vent_settings(conn, vent_data: dict):
@@ -45,7 +45,7 @@ def add_vent_settings(conn, vent_data: dict):
     {update_clause}
     """
 
-    conn.execute(text(sql), vent_data)
+    conn.query(sql, params=vent_data)
 
 # Add observed data
 def add_observed_data(conn, observed_data: dict):
@@ -59,7 +59,7 @@ def add_observed_data(conn, observed_data: dict):
     VALUES ({values})
     """
 
-    conn.execute(text(sql), observed_data)
+    conn.query(sql, params=observed_data)
 
 # Add derived features
 def add_derived_features(conn, derived_features: dict):
@@ -75,7 +75,7 @@ def add_derived_features(conn, derived_features: dict):
     VALUES ({values})
     """
 
-    conn.execute(text(sql), derived_features)
+    conn.query(sql, params=derived_features)
 
 # Add predictions
 def add_prediction(conn, patient_id: str, time: int, prediction_data: dict):
@@ -89,7 +89,7 @@ def add_prediction(conn, patient_id: str, time: int, prediction_data: dict):
     values = ", ".join([f":{k}" for k in data_to_insert.keys()])
 
     sql = f"INSERT INTO predictions ({columns}) VALUES ({values})"
-    conn.execute(text(sql), data_to_insert)
+    conn.query(sql, params=data_to_insert)
 
 # Get list of patients
 def get_all_patients(conn):
