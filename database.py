@@ -97,10 +97,21 @@ def get_all_patients(supabase: Client):
     else:
         return []
 
-# # Get patient data
-# def get_patient_data(conn, patient_id):
-#     result = conn.execute(text("SELECT * FROM patients WHERE patient_id=:patient_id"), {"patient_id": patient_id})
-#     return result.fetchone()
+# Get patient data
+def get_patient_data(supabase: Client, patient_id):
+    """
+    Fetch a single patient's full record.
+    Returns a dict.
+    """
+    response = (
+        supabase
+        .table("patients")
+        .select("*")
+        .eq("patient_id", patient_id)
+        .single()          # ensures one row
+        .execute()
+    )
+    return response
 
 # # Get ventilation history for patient
 # def get_ventilation_history(conn, patient_id):
