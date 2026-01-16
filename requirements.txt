@@ -6,3 +6,4 @@ plotly
 sqlalchemy
 st-supabase-connection
 psycopg2-binary
+supabase
