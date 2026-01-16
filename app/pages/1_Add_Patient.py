@@ -7,10 +7,10 @@ ROOT_DIR = Path(__file__).resolve().parents[1]
 sys.path.append(str(ROOT_DIR))
 
 import streamlit as st
-from database import add_patient, create_connection
+from database import add_patient
 
-# Initialize database connection
-conn = create_connection()
+# Initialize Supabase connection
+conn = st.connection("sql")
 
 st.set_page_config(page_title="Add Patient", layout="wide")
 st.title("🧑‍⚕️ Add New Patient")
