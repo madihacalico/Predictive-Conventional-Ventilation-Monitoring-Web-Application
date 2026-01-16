@@ -1,30 +1,29 @@
 # database.py
 # Handles all database interactions for the Ventilation Prediction System
 
-from sqlalchemy import text
+# from sqlalchemy import text
+from supabase import Client
 
 # ----------------- CRUD Functions ----------------- #
 
 # Add new patient
-def add_patient(conn, patient_data: dict):
+def add_patient(supabase: Client, patient_data: dict):
     """
+    Add a new patient or update existing one if patient_id exists.
+    Uses Supabase upsert for conflict handling.
+    
+    supabase: Supabase client
     patient_data: dictionary containing A+B+C fields
     """
-    columns = ", ".join(patient_data.keys())
-    values = ", ".join([f":{k}" for k in patient_data.keys()])
-    # Columns to update (exclude keys used for uniqueness)
-    update_cols = [k for k in patient_data.keys() if k != "patient_id"]
-    update_clause = ", ".join([f"{col}=excluded.{col}" for col in update_cols])
-
-    sql = f"""
-    INSERT INTO patients ({columns}) 
-    VALUES ({values})
-    ON CONFLICT(patient_id)
-    DO UPDATE SET
-    {update_clause}
-    """
-
-    conn.execute(text(sql), patient_data)
+    response = supabase.table("patients").upsert(
+        patient_data,        # data to insert or update
+        on_conflict="patient_id"  # column to check for conflicts
+    ).execute()
+    
+    if response.status_code not in (200, 201):
+        raise Exception(f"Supabase error: {response.data}")
+    
+    return response
 
 # Add ventilation settings
 def add_vent_settings(conn, vent_data: dict):
