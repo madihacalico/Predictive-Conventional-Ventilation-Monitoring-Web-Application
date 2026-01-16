@@ -20,7 +20,7 @@ def add_patient(supabase: Client, patient_data: dict):
         on_conflict="patient_id"  # column to check for conflicts
     ).execute()
     
-    return response
+    return response.data
 
 # Add ventilation settings
 def add_vent_settings(supabase: Client, vent_data: dict):
@@ -35,7 +35,7 @@ def add_vent_settings(supabase: Client, vent_data: dict):
         on_conflict=["patient_id", "time"]  # unique constraint on patient_id + time
     ).execute()
     
-    return response
+    return response.data
 
 # Add observed data
 def add_observed_data(supabase: Client, observed_data: dict):
@@ -52,7 +52,7 @@ def add_observed_data(supabase: Client, observed_data: dict):
         on_conflict=["patient_id", "time"]  # unique constraint on patient_id + time
     ).execute()
     
-    return response
+    return response.data
 
 # Add derived features
 def add_derived_features(conn, derived_features: dict):
@@ -87,7 +87,7 @@ def add_prediction(supabase: Client, patient_id: str, time_input: int, predictio
         data,
         on_conflict=["patient_id", "time"]
     ).execute()
-    return response
+    return response.data
 
 # Get list of patients
 def get_all_patients(supabase: Client):
@@ -111,19 +111,58 @@ def get_patient_data(supabase: Client, patient_id):
         .single()          # ensures one row
         .execute()
     )
-    return response
+    return response.data
 
-# # Get ventilation history for patient
-# def get_ventilation_history(conn, patient_id):
-#     sql = "SELECT * FROM vent_settings WHERE patient_id=:patient_id ORDER BY time ASC"
-#     result = conn.execute(text(sql), {"patient_id": patient_id})
-#     return result.fetchall()
+# Get vent settings
+def get_vent_settings(supabase, patient_id, time):
+    """
+    Fetch vent settings for a patient at a specific time
+    """
+    response = (
+        supabase
+        .table("vent_settings")
+        .select("*")
+        .eq("patient_id", patient_id)
+        .eq("time", time)
+        .single()
+        .execute()
+    )
 
-# # Get observed data for patient
-# def get_observed_history(conn, patient_id):
-#     sql = "SELECT * FROM observed_data WHERE patient_id=:patient_id ORDER BY time ASC"
-#     result = conn.execute(text(sql), {"patient_id": patient_id})
-#     return result.fetchall()
+    return response.data
+
+# Get observed data for patient
+def get_observed_data(supabase, patient_id, time):
+    """
+    Fetch observed data for a patient at a specific time
+    """
+    response = (
+        supabase
+        .table("observed_data")
+        .select("*")
+        .eq("patient_id", patient_id)
+        .eq("time", time)
+        .single()
+        .execute()
+    )
+
+    return response.data
+
+# Get derived features
+def get_derived_features(supabase, patient_id, time):
+    """
+    Fetch derived features for a patient at a specific time
+    """
+    response = (
+        supabase
+        .table("derived_features")
+        .select("*")
+        .eq("patient_id", patient_id)
+        .eq("time", time)
+        .single()
+        .execute()
+    )
+
+    return response.data
 
 # # Get predictions for patient
 # def get_predictions(conn, patient_id):

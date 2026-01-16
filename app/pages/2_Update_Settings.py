@@ -12,6 +12,7 @@ from utils.feature_engineering import generate_mock_observed_data, compute_deriv
 from utils.preprocessing import prepare_input_features
 from utils.prediction import predict_outcomes
 from database import add_vent_settings, add_observed_data, get_all_patients, add_prediction
+from Home import init_connection
 
 # ---------- Page UI ----------
 st.set_page_config(page_title="Update Settings", layout="wide")

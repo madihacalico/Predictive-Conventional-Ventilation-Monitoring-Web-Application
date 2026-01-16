@@ -1,17 +1,16 @@
 # utils/prediction.py
 import joblib
-import json
-import pandas as pd
-from .preprocessing import preprocess_data  # import your function
+# import json
+from .preprocessing import preprocess_data
 
 MODEL_PATH = "model/ventilation_model_v2.pkl"
-FEATURES_PATH = "model/feature_names_v2.json"
+# FEATURES_PATH = "model/feature_names_v2.json"
 
 # Load model & training column order
 model_pipeline = joblib.load(MODEL_PATH)
 
-with open(FEATURES_PATH, "r") as f:
-    TRAINING_FEATURES = json.load(f)
+# with open(FEATURES_PATH, "r") as f:
+#     TRAINING_FEATURES = json.load(f)
 
 def predict_outcomes(feature_dict: dict):
     """
