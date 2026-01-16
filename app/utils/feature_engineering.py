@@ -28,24 +28,24 @@ def in_range(value, min_val, max_val):
 
 # ---------- Generate Mock Observed Data ----------
 
-def generate_mock_observed_data(patient_id, time, conn):
+def generate_mock_observed_data(patient_id, time, supabase):
     """
     Generate mock E data based on patient A-D data stored in DB.
     Returns a dictionary with observed values.
     """
     # Fetch patient info
-    # patient_df = pd.read_sql_query(
-    #     "SELECT * FROM patients WHERE patient_id = ?", conn, params=(patient_id,)
-    # )
-    patient = get_patient_data(conn, patient_id)
+    patient = get_patient_data(supabase, patient_id)
 
-    settings_df = pd.read_sql_query(
-        "SELECT * FROM vent_settings WHERE patient_id = ? AND time = ?",
-        conn, params=(patient_id, time)
-    )
+    # Fetch vent settings for this patient and interval
+    response = supabase.table("vent_settings").select("*")\
+        .eq("patient_id", patient_id).eq("time", time).execute()
+    settings_df = pd.DataFrame(response.data)
+    if settings_df.empty:
+        raise ValueError(f"No ventilation settings found for patient {patient_id} at time {time}")
+
+    settings = settings_df.iloc[0]
 
     # Simple mock generation logic
-    # Normally you can replace with statistical models or random ranges based on settings
     tv = settings_df['tv_setting'].values[0] + random.randint(-50, 50)
     etco2 = 35 + random.uniform(-5, 5)
     spo2 = 95 + random.uniform(-3, 3)
@@ -78,54 +78,51 @@ def generate_mock_observed_data(patient_id, time, conn):
 
 # ---------- Compute Derived Features ----------
 
-def compute_derived_features(patient_id, observed_df, conn):
+def compute_derived_features(patient_id, observed_row, supabase):
     """
     Compute F derived features for patient at current time.
+    observed_row: dict containing observed data for this time
     Includes:
         - delta features
         - lag features (previous values)
         - distance to target ranges
         - in-range status
     """
-    time = observed_df['time']
+    time = observed_row['time']
     
     # Fetch patient info and target ranges
-    patient = pd.read_sql_query(
-        "SELECT * FROM patients WHERE patient_id = ?", conn, params=(patient_id,)
-    ).iloc[0]
+    patient_response = supabase.table("patients").select("*").eq("patient_id", patient_id).execute()
+    if not patient_response.data:
+        raise ValueError(f"No patient found with ID {patient_id}")
+    patient = patient_response.data[0]
 
-    vent_setting = pd.read_sql_query(
-        "SELECT * FROM vent_settings WHERE patient_id = ?", conn, params=(patient_id,)
-    ).iloc[0]
-    # patient = get_patient_data(conn, patient_id)
+    # Fetch latest vent setting for patient
+    vent_response = supabase.table("vent_settings").select("*").eq("patient_id", patient_id).order("time", desc=True).limit(1).execute()
+    if not vent_response.data:
+        raise ValueError(f"No vent settings found for patient {patient_id}")
+    vent_setting = vent_response.data[0]
 
     # Fetch previous observed row (for lag/delta)
     if time == 0:
         prev_obs = None
     else:
-        prev_obs_df = pd.read_sql_query(
-            "SELECT * FROM observed_data WHERE patient_id = ? AND time = ?",
-            conn, params=(patient_id, time - 15)
-        )
-        prev_obs = prev_obs_df.iloc[0] if not prev_obs_df.empty else None
+        prev_response = supabase.table("observed_data").select("*").eq("patient_id", patient_id).eq("time", time - 15).execute()
+        prev_obs = prev_response.data[0] if prev_response.data else None
 
     derived = {}
 
     # ---------- Delta Features ----------
     for var in ['tv', 'etco2', 'spo2', 'pplat']:
-        if prev_obs is not None:
-            derived[f"{var}_diff"] = observed_df[var] - prev_obs[var]
-            derived[f"{var}_pct_change"] = (observed_df[var] - prev_obs[var]) / prev_obs[var] * 100
+        if prev_obs:
+            derived[f"{var}_diff"] = observed_row[var] - prev_obs[var]
+            derived[f"{var}_pct_change"] = (observed_row[var] - prev_obs[var]) / prev_obs[var] * 100
         else:
             derived[f"{var}_diff"] = np.nan
             derived[f"{var}_pct_change"] = np.nan
 
     # ---------- Lag Features ----------
     for var in ['tv', 'etco2', 'spo2', 'pplat', 'hr', 'rr']:
-        if prev_obs is not None:
-            derived[f"{var}_lag1"] = prev_obs[var]
-        else:
-            derived[f"{var}_lag1"] = np.nan
+        derived[f"{var}_lag1"] = prev_obs[var] if prev_obs else np.nan
 
     # ---------- Distance to target ranges ----------
     for var, min_col, max_col in [
@@ -134,7 +131,7 @@ def compute_derived_features(patient_id, observed_df, conn):
         ('spo2', 'min_spo2', 'max_spo2'),
         ('pplat', None, 'max_pplat')
     ]:
-        val = observed_df[var]
+        val = observed_row[var]
         min_val = patient[min_col] if min_col else np.nan
         max_val = patient[max_col]
         if var != 'pplat':
@@ -143,20 +140,18 @@ def compute_derived_features(patient_id, observed_df, conn):
         derived[f"{var}_dist_closest"] = min(abs(val - min_val) if min_col else np.inf, abs(max_val - val))
 
     # ---------- In-range status ----------
-    derived['tv_in_range'] = in_range(observed_df['tv'], patient['min_tv'], patient['max_tv'])
-    derived['etco2_in_range'] = in_range(observed_df['etco2'], patient['min_etco2'], patient['max_etco2'])
-    derived['spo2_in_range'] = in_range(observed_df['spo2'], patient['min_spo2'], patient['max_spo2'])
-    derived['pplat_in_range'] = in_range(observed_df['pplat'], 0, patient['max_pplat'])
+    derived['tv_in_range'] = in_range(observed_row['tv'], patient['min_tv'], patient['max_tv'])
+    derived['etco2_in_range'] = in_range(observed_row['etco2'], patient['min_etco2'], patient['max_etco2'])
+    derived['spo2_in_range'] = in_range(observed_row['spo2'], patient['min_spo2'], patient['max_spo2'])
+    derived['pplat_in_range'] = in_range(observed_row['pplat'], 0, patient['max_pplat'])
 
     # ---------- Convert IE_Ratio to numeric ----------
-    # derived['ie_ratio_numeric'] = parse_ie_ratio(patient['ie_ratio'])
-    derived['ie_ratio_numeric'] = parse_ie_ratio(vent_setting['ie_ratio'])  
-    # if 'ie_ratio' in patient else np.nan
+    derived['ie_ratio_numeric'] = parse_ie_ratio(vent_setting.get('ie_ratio', '1:1'))  
 
     derived['patient_id'] = patient_id
     derived['time'] = time
 
-    # ---------- Insert derived features into DB ----------
-    add_derived_features(conn, derived)
+    # ---------- Insert derived features into Supabase DB ----------
+    add_derived_features(supabase, derived)
 
     return derived
