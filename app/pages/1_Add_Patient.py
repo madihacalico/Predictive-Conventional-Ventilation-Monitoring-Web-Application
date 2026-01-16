@@ -8,9 +8,11 @@ sys.path.append(str(ROOT_DIR))
 
 import streamlit as st
 from database import add_patient
+from supabase import create_client, Client
+from Home import init_connection
 
 # Initialize Supabase connection
-conn = st.connection("sql")
+supabase = init_connection()
 
 st.set_page_config(page_title="Add Patient", layout="wide")
 st.title("🧑‍⚕️ Add New Patient")
@@ -118,7 +120,7 @@ if st.button("+ Add Patient", icon="➕"):
             "max_pplat": max_pplat
         }
         try:
-            add_patient(conn, patient_data)
+            add_patient(supabase, patient_data)
             st.success(f"Patient {patient_id} added successfully!")
         except Exception as e:
             st.error(f"Error adding patient: {e}")
