@@ -25,6 +25,7 @@ def add_patient(conn, patient_data: dict):
     """
 
     conn.query(sql, params=patient_data)
+    return True
 
 # Add ventilation settings
 def add_vent_settings(conn, vent_data: dict):
