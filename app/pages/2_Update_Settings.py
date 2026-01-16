@@ -83,14 +83,14 @@ if submitted:
             st.error(msg)
     else:
         # --- Check for duplicate time interval ---
-        existing = supabase.table("vent_settings").select("time").eq("patient_id", patient_id).eq("time", int(time_input)).execute()
+        existing = supabase.table("vent_settings").select("time_interval").eq("patient_id", patient_id).eq("time_interval", int(time_input)).execute()
         if existing.data:
             st.error(f"Ventilation data for patient {patient_id} at time {time_input} already exists!")
         else:
             # Store D (vent settings)
             vent_data = {
                 "patient_id": patient_id,
-                "time": int(time_input),
+                "time_interval": int(time_input),
                 "tv_setting": tv_setting,
                 "fio2": fio2,
                 "ventilator_rate": ventilator_rate,
@@ -106,7 +106,7 @@ if submitted:
                 st.error(f"Error adding ventilation settings: {e}")
 
             # ---------- E: Generate mock observed data ----------
-            observed_data = generate_mock_observed_data(patient_id, vent_data["time"], supabase)
+            observed_data = generate_mock_observed_data(patient_id, vent_data["time_interval"], supabase)
             add_observed_data(supabase, observed_data)
             st.success("Mock data generated and added to table!")
 

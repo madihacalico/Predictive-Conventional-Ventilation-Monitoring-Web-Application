@@ -32,7 +32,7 @@ def add_vent_settings(supabase: Client, vent_data: dict):
     """
     response = supabase.table("vent_settings").upsert(
         vent_data,        # data to insert or update
-        on_conflict=["patient_id", "time"]  # unique constraint on patient_id + time
+        on_conflict=["patient_id", "time_interval"]  # unique constraint on patient_id + time
     ).execute()
     
     return response.data
@@ -49,7 +49,7 @@ def add_observed_data(supabase: Client, observed_data: dict):
         
     response = supabase.table("observed_data").upsert(
         observed_data,        # data to insert or update
-        on_conflict=["patient_id", "time"]  # unique constraint on patient_id + time
+        on_conflict=["patient_id", "time_interval"]  # unique constraint on patient_id + time
     ).execute()
     
     return response.data
@@ -80,12 +80,12 @@ def add_prediction(supabase: Client, patient_id: str, time_input: int, predictio
     # Combine patient_id, time_input, and predictions into a single row
     data = {
         "patient_id": patient_id,
-        "time": int(time_input),
+        "time_interval": int(time_input),
         **predictions
     }
     response = supabase.table("predictions").upsert(
         data,
-        on_conflict=["patient_id", "time"]
+        on_conflict=["patient_id", "time_interval"]
     ).execute()
     return response.data
 
@@ -123,7 +123,7 @@ def get_vent_settings(supabase, patient_id, time):
         .table("vent_settings")
         .select("*")
         .eq("patient_id", patient_id)
-        .eq("time", time)
+        .eq("time_interval", time)
         .single()
         .execute()
     )
@@ -140,7 +140,7 @@ def get_observed_data(supabase, patient_id, time):
         .table("observed_data")
         .select("*")
         .eq("patient_id", patient_id)
-        .eq("time", time)
+        .eq("time_interval", time)
         .single()
         .execute()
     )
@@ -157,7 +157,7 @@ def get_derived_features(supabase, patient_id, time):
         .table("derived_features")
         .select("*")
         .eq("patient_id", patient_id)
-        .eq("time", time)
+        .eq("time_interval", time)
         .single()
         .execute()
     )

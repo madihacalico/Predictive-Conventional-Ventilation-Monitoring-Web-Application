@@ -38,7 +38,7 @@ def generate_mock_observed_data(patient_id, time, supabase):
 
     # Fetch vent settings for this patient and interval
     response = supabase.table("vent_settings").select("*")\
-        .eq("patient_id", patient_id).eq("time", time).execute()
+        .eq("patient_id", patient_id).eq("time_interval", time).execute()
     settings_df = pd.DataFrame(response.data)
     if settings_df.empty:
         raise ValueError(f"No ventilation settings found for patient {patient_id} at time {time}")
@@ -54,7 +54,7 @@ def generate_mock_observed_data(patient_id, time, supabase):
     observed_data = {
         # Foreign keys
         "patient_id": patient_id,
-        "time": time,
+        "time_interval": time,
 
         "generated_mv": tv * settings_df['ventilator_rate'].values[0] / 1000,  # rough estimate
         "ppeak": pplat + random.uniform(0, 2),
@@ -97,7 +97,7 @@ def compute_derived_features(patient_id, observed_row, supabase):
     patient = patient_response.data[0]
 
     # Fetch latest vent setting for patient
-    vent_response = supabase.table("vent_settings").select("*").eq("patient_id", patient_id).order("time", desc=True).limit(1).execute()
+    vent_response = supabase.table("vent_settings").select("*").eq("patient_id", patient_id).order("time_interval", desc=True).limit(1).execute()
     if not vent_response.data:
         raise ValueError(f"No vent settings found for patient {patient_id}")
     vent_setting = vent_response.data[0]
@@ -106,7 +106,7 @@ def compute_derived_features(patient_id, observed_row, supabase):
     if time == 0:
         prev_obs = None
     else:
-        prev_response = supabase.table("observed_data").select("*").eq("patient_id", patient_id).eq("time", time - 15).execute()
+        prev_response = supabase.table("observed_data").select("*").eq("patient_id", patient_id).eq("time_interval", time - 15).execute()
         prev_obs = prev_response.data[0] if prev_response.data else None
 
     derived = {}
