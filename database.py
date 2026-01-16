@@ -23,39 +23,36 @@ def add_patient(supabase: Client, patient_data: dict):
     return response
 
 # Add ventilation settings
-def add_vent_settings(conn, vent_data: dict):
+def add_vent_settings(supabase: Client, vent_data: dict):
     """
+    Insert or update ventilation settings for a patient.
+    Uses upsert to handle conflicts on patient_id + time.
+    
     vent_data: dictionary containing patient_id, time, and D fields
     """
-    columns = ", ".join(vent_data.keys())
-    values = ", ".join([f":{k}" for k in vent_data.keys()])
-    # Columns to update (exclude keys used for uniqueness)
-    update_cols = [k for k in vent_data.keys() if k not in ("patient_id", "time")]
-    update_clause = ", ".join([f"{col}=excluded.{col}" for col in update_cols])
-
-    sql = f"""
-    INSERT INTO vent_settings ({columns}) 
-    VALUES ({values})
-    ON CONFLICT(patient_id, time)
-    DO UPDATE SET
-    {update_clause}
-    """
-
-    conn.execute(text(sql), vent_data)
+    response = supabase.table("vent_settings").upsert(
+        vent_data,        # data to insert or update
+        on_conflict=["patient_id", "time"]  # unique constraint on patient_id + time
+    ).execute()
+    
+    return response
 
 # Add observed data
-def add_observed_data(conn, observed_data: dict):
+def add_observed_data(supabase: Client, observed_data: dict):
     """
+    Insert multiple rows of observed data for a patient.
+    
     observed_data: dictionary containing patient_id, time, and E fields
     """
-    columns = ", ".join(observed_data.keys())
-    values = ", ".join([f":{k}" for k in observed_data.keys()])
-    sql = f"""
-    INSERT INTO observed_data ({columns}) 
-    VALUES ({values})
-    """
-
-    conn.execute(text(sql), observed_data)
+    if not observed_data:
+        return []
+        
+    response = supabase.table("observed_data").upsert(
+        observed_data,        # data to insert or update
+        on_conflict=["patient_id", "time"]  # unique constraint on patient_id + time
+    ).execute()
+    
+    return response
 
 # Add derived features
 def add_derived_features(conn, derived_features: dict):
@@ -74,23 +71,31 @@ def add_derived_features(conn, derived_features: dict):
     conn.execute(text(sql), derived_features)
 
 # Add predictions
-def add_prediction(conn, patient_id: str, time: int, prediction_data: dict):
+def add_prediction(supabase: Client, patient_id: str, time_input: int, predictions: dict):
     """
+    Insert or update model predictions for a patient at a given time.
+    
     prediction_data: dictionary containing patient_id, time, and G fields
     """
-    # Combine patient_id, time, and predictions into a single dictionary
-    data_to_insert = {"patient_id": patient_id, "time": time, **prediction_data}
+    # Combine patient_id, time_input, and predictions into a single row
+    data = {
+        "patient_id": patient_id,
+        "time": int(time_input),
+        **predictions
+    }
+    response = supabase.table("predictions").upsert(
+        data,
+        on_conflict=["patient_id", "time"]
+    ).execute()
+    return response
 
-    columns = ", ".join(data_to_insert.keys())
-    values = ", ".join([f":{k}" for k in data_to_insert.keys()])
-
-    sql = f"INSERT INTO predictions ({columns}) VALUES ({values})"
-    conn.execute(text(sql), data_to_insert)
-
-# # Get list of patients
-# def get_all_patients(conn):
-#     result = conn.execute(text("SELECT patient_id FROM patients"))
-#     return [row[0] for row in result.fetchall()]
+# Get list of patients
+def get_all_patients(supabase: Client):
+    response = supabase.table("patients").select("patient_id").execute()
+    if response.data:
+        return [row["patient_id"] for row in response.data]
+    else:
+        return []
 
 # # Get patient data
 # def get_patient_data(conn, patient_id):
