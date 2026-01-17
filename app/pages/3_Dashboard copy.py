@@ -12,13 +12,12 @@ import sqlite3
 import plotly.express as px
 from Home import init_connection
 from database import get_predictions, get_all_patients
+import io
+import plotly.io as pio
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image, Table, TableStyle
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
-import plotly.io as pio
-import tempfile
-import os
 
 
 # ------------------------------
@@ -171,42 +170,45 @@ if selected_patient:
     else:
         st.success("All parameters predicted to remain in range for this patient.")
 
-def generate_dashboard_pdf(
-    patient_id,
-    figures: dict,
-    status_df: pd.DataFrame
-):
-    temp_dir = tempfile.mkdtemp()
-    pdf_path = os.path.join(temp_dir, f"patient_{patient_id}_dashboard.pdf")
 
-    doc = SimpleDocTemplate(pdf_path, pagesize=A4)
+def generate_dashboard_pdf(patient_id, figures: dict, status_df: pd.DataFrame):
+    """
+    Generate a PDF report for a patient with Plotly charts and prediction history table.
+    
+    Parameters:
+    - patient_id: str, selected patient ID
+    - figures: dict of Plotly figures, e.g., {'Tidal Volume (TV)': fig, ...}
+    - status_df: pandas DataFrame containing prediction history
+    """
+    # Create temporary PDF in memory
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=A4)
     styles = getSampleStyleSheet()
     elements = []
 
-    # ----- Title -----
+    # --- Title ---
     elements.append(Paragraph(
         f"<b>Ventilation Dashboard Overview</b><br/>Patient ID: {patient_id}",
         styles["Title"]
     ))
     elements.append(Spacer(1, 16))
 
-    # ----- Charts -----
+    # --- Charts ---
     for title, fig in figures.items():
-        img_path = os.path.join(temp_dir, f"{title}.png")
-
-        pio.write_image(fig, img_path, width=800, height=450)
+        # Export Plotly figure to PNG in memory
+        img_bytes = fig.to_image(format="png", width=800, height=450, engine="kaleido")
+        img_buffer = io.BytesIO(img_bytes)
 
         elements.append(Paragraph(f"<b>{title}</b>", styles["Heading2"]))
         elements.append(Spacer(1, 8))
-        elements.append(Image(img_path, width=500, height=280))
+        elements.append(Image(img_buffer, width=500, height=280))
         elements.append(Spacer(1, 16))
 
-    # ----- Prediction table -----
+    # --- Prediction Table ---
     elements.append(Paragraph("<b>Target Status Prediction History</b>", styles["Heading2"]))
     elements.append(Spacer(1, 8))
 
     table_data = [status_df.columns.tolist()] + status_df.values.tolist()
-
     table = Table(table_data, repeatRows=1)
     table.setStyle(TableStyle([
         ("BACKGROUND", (0, 0), (-1, 0), colors.lightgrey),
@@ -214,25 +216,27 @@ def generate_dashboard_pdf(
         ("ALIGN", (0, 0), (-1, -1), "CENTER"),
         ("FONT", (0, 0), (-1, 0), "Helvetica-Bold"),
     ]))
-
     elements.append(table)
 
+    # Build PDF in memory
     doc.build(elements)
-    return pdf_path
+    buffer.seek(0)
+    return buffer  # return in-memory PDF
+
 
 st.markdown("---")
 
 if st.button("📄 Export Overview (PDF)"):
-    pdf_path = generate_dashboard_pdf(
+    pdf_buffer = generate_dashboard_pdf(
         patient_id=selected_patient,
         figures=figures,
         status_df=status_df
     )
 
-    with open(pdf_path, "rb") as f:
-        st.download_button(
-            label="⬇️ Download PDF",
-            data=f,
-            file_name=f"patient_{selected_patient}_dashboard.pdf",
-            mime="application/pdf"
-        )
+    st.download_button(
+        label="⬇️ Download PDF",
+        data=pdf_buffer,
+        file_name=f"patient_{selected_patient}_dashboard.pdf",
+        mime="application/pdf"
+    )
+
