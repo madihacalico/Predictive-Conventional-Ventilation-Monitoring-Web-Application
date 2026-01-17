@@ -131,22 +131,43 @@ def get_vent_settings(supabase, patient_id, time):
 
     return response.data
 
-# Get observed data for patient
-def get_observed_data(supabase, patient_id, time):
+# Get observed data history for patient
+def get_observed_data(
+    supabase: Client,
+    patient_id: str
+) -> pd.DataFrame:
     """
-    Fetch observed data for a patient at a specific time
+    Fetch observed (E) data for a patient, ordered by time.
     """
     response = (
         supabase
         .table("observed_data")
         .select("*")
         .eq("patient_id", patient_id)
-        .eq("time_interval", time)
-        .single()
+        .order("time_interval")
         .execute()
     )
 
-    return response.data
+    return pd.DataFrame(response.data)
+
+# Get predictions history for patient
+def get_predictions(
+    supabase: Client,
+    patient_id: str
+) -> pd.DataFrame:
+    """
+    Fetch prediction (G) data for a patient, ordered by time.
+    """
+    response = (
+        supabase
+        .table("predictions")
+        .select("*")
+        .eq("patient_id", patient_id)
+        .order("time_interval")
+        .execute()
+    )
+
+    return pd.DataFrame(response.data)
 
 # Get derived features
 def get_derived_features(supabase, patient_id, time):
@@ -205,11 +226,5 @@ def sanitize_for_json(obj):
         pass
 
     return obj
-
-# # Get predictions for patient
-# def get_predictions(conn, patient_id):
-#     sql = "SELECT * FROM predictions WHERE patient_id=:patient_id ORDER BY time ASC"
-#     result = conn.execute(text(sql), {"patient_id": patient_id})
-#     return result.fetchall()
 
 # ----------------- End of database.py ----------------- #

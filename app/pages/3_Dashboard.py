@@ -10,12 +10,13 @@ import streamlit as st
 import pandas as pd
 import sqlite3
 import plotly.express as px
+from Home import init_connection
+from database import get_observed_data, get_predictions
 
 # ------------------------------
-# Database connection
+# Supabase connection
 # ------------------------------
-DB_PATH = "ventilation.db"
-conn = sqlite3.connect(DB_PATH, check_same_thread=False)
+supabase = init_connection()
 
 # ------------------------------
 # Page title
@@ -27,7 +28,13 @@ st.subheader("Patient Ventilation Overview and Alerts")
 # ------------------------------
 # Count patients currently undergoing ventilation
 # ------------------------------
-patients_df = pd.read_sql("SELECT DISTINCT patient_id FROM patients", conn)
+patients_response = (
+    supabase
+    .table("patients")
+    .select("patient_id")
+    .execute()
+)
+patients_df = pd.DataFrame(patients_response.data).drop_duplicates()
 num_patients = len(patients_df)
 
 st.info(f"Number of patients undergoing ventilation: **{num_patients}**")
@@ -41,31 +48,36 @@ selected_patient = st.selectbox("Select a patient to view", patient_options)
 if selected_patient:
 
     # ------------------------------
-    # Get ventilation & observed data
+    # Get observed data & predictions
     # ------------------------------
-    vent_df = pd.read_sql(
-        "SELECT * FROM vent_settings WHERE patient_id = ? ORDER BY Time ASC",
-        conn,
-        params=(selected_patient,)
-    )
+    # vent_resp = (
+    #     supabase
+    #     .table("vent_settings")
+    #     .select("*")
+    #     .eq("patient_id", selected_patient)
+    #     .order("time_interval")
+    #     .execute()
+    # )
+    # vent_df = pd.DataFrame(vent_resp.data)
 
-    obs_df = pd.read_sql(
-        "SELECT * FROM observed_data WHERE patient_id = ? ORDER BY Time ASC",
-        conn,
-        params=(selected_patient,)
-    )
+    # Observed data
+    obs_df = get_observed_data(supabase, selected_patient)
 
-    pred_df = pd.read_sql(
-        "SELECT * FROM predictions WHERE patient_id = ? ORDER BY Time ASC",
-        conn,
-        params=(selected_patient,)
-    )
+    # Predictions
+    pred_df = get_predictions(supabase, selected_patient)
+
+    # Guard clauses
+    if obs_df.empty or pred_df.empty:
+        st.warning("No data available for this patient yet.")
+        st.stop()
 
     # ------------------------------
     # Merge data for plotting
     # ------------------------------
     # Use observed values for TV, ETCO2, SPO2, Pplat
-    plot_df = obs_df[["time", "tv", "etco2", "spo2", "pplat"]]
+    plot_df = obs_df[
+        ["time_interval", "tv", "etco2", "spo2", "pplat"]
+        ].rename(columns={"time_interval": "time"})
 
     # ------------------------------
     # Plot each variable

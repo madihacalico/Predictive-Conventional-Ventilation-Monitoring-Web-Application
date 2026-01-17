@@ -41,21 +41,6 @@ def load_feature_names():
 model = load_model()
 feature_names = load_feature_names()
 
-# # --- DATABASE CONNECTION USING ST.CONNECTION ---
-
-# db_connected = False
-# db_error = None
-
-# try:
-#     conn = st.connection("sql")
-
-#     # Health check (must use query, not execute)
-#     conn.query("SELECT 1")
-
-#     db_connected = True
-# except Exception as e:
-#     db_error = str(e)
-
 # Initialize database connection
 @st.cache_resource
 def init_connection():
