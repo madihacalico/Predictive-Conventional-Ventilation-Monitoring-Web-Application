@@ -3,6 +3,7 @@
 
 # from sqlalchemy import text
 from supabase import Client
+import pandas as pd
 
 # ----------------- CRUD Functions ----------------- #
 
