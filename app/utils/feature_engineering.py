@@ -88,7 +88,7 @@ def compute_derived_features(patient_id, observed_row, supabase):
         - distance to target ranges
         - in-range status
     """
-    time = observed_row['time']
+    time = observed_row['time_interval']
     
     # Fetch patient info and target ranges
     patient_response = supabase.table("patients").select("*").eq("patient_id", patient_id).execute()
@@ -149,7 +149,7 @@ def compute_derived_features(patient_id, observed_row, supabase):
     derived['ie_ratio_numeric'] = parse_ie_ratio(vent_setting.get('ie_ratio', '1:1'))  
 
     derived['patient_id'] = patient_id
-    derived['time'] = time
+    derived['time_interval'] = time
 
     # ---------- Insert derived features into Supabase DB ----------
     add_derived_features(supabase, derived)
