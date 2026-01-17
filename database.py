@@ -30,6 +30,7 @@ def add_vent_settings(supabase: Client, vent_data: dict):
     
     vent_data: dictionary containing patient_id, time, and D fields
     """
+    vent_data = sanitize_for_json(vent_data)
     response = supabase.table("vent_settings").upsert(
         vent_data,        # data to insert or update
         on_conflict="patient_id,time_interval"  # unique constraint on patient_id + time
@@ -44,6 +45,8 @@ def add_observed_data(supabase: Client, observed_data: dict):
     
     observed_data: dictionary containing patient_id, time, and E fields
     """
+    observed_data = sanitize_for_json(observed_data)
+
     if not observed_data:
         return []
         
@@ -56,6 +59,7 @@ def add_observed_data(supabase: Client, observed_data: dict):
 
 # Add derived features
 def add_derived_features(supabase: Client, derived_features: dict):
+    derived_features = sanitize_for_json(derived_features)
     response = (
         supabase
         .table("derived_features")
@@ -160,6 +164,47 @@ def get_derived_features(supabase, patient_id, time):
     )
 
     return response.data
+
+import numpy as np
+import pandas as pd
+from datetime import datetime, date
+
+def sanitize_for_json(obj):
+    """
+    Recursively convert objects to JSON-serializable Python types.
+    Safe for Supabase / Postgres inserts.
+    """
+    # Dict
+    if isinstance(obj, dict):
+        return {k: sanitize_for_json(v) for k, v in obj.items()}
+
+    # List / tuple
+    if isinstance(obj, (list, tuple)):
+        return [sanitize_for_json(v) for v in obj]
+
+    # NumPy scalars
+    if isinstance(obj, np.generic):
+        return obj.item()
+
+    # Pandas scalars
+    if isinstance(obj, (pd.Timestamp,)):
+        return obj.to_pydatetime().isoformat()
+
+    # Datetime / date
+    if isinstance(obj, (datetime, date)):
+        return obj.isoformat()
+
+    # NaN handling
+    if obj is None:
+        return None
+
+    try:
+        if pd.isna(obj):
+            return None
+    except Exception:
+        pass
+
+    return obj
 
 # # Get predictions for patient
 # def get_predictions(conn, patient_id):

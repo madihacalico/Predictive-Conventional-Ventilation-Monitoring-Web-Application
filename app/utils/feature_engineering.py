@@ -34,7 +34,7 @@ def generate_mock_observed_data(patient_id, time, supabase):
     Returns a dictionary with observed values.
     """
     # Fetch patient info
-    patient = get_patient_data(supabase, patient_id)
+    # patient = get_patient_data(supabase, patient_id)
 
     # Fetch vent settings for this patient and interval
     response = supabase.table("vent_settings").select("*")\
@@ -43,7 +43,7 @@ def generate_mock_observed_data(patient_id, time, supabase):
     if settings_df.empty:
         raise ValueError(f"No ventilation settings found for patient {patient_id} at time {time}")
 
-    settings = settings_df.iloc[0]
+    # settings = settings_df.iloc[0]
 
     # Simple mock generation logic
     tv = settings_df['tv_setting'].values[0] + random.randint(-50, 50)
