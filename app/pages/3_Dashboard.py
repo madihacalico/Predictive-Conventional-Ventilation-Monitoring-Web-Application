@@ -11,7 +11,7 @@ import pandas as pd
 import sqlite3
 import plotly.express as px
 from Home import init_connection
-from database import get_observed_data, get_predictions
+from database import get_observed_data, get_predictions, get_all_patients
 
 # ------------------------------
 # Supabase connection
@@ -28,6 +28,7 @@ st.subheader("Patient Ventilation Overview and Alerts")
 # ------------------------------
 # Count patients currently undergoing ventilation
 # ------------------------------
+
 patients_response = (
     supabase
     .table("patients")
@@ -42,8 +43,17 @@ st.info(f"Number of patients undergoing ventilation: **{num_patients}**")
 # ------------------------------
 # Patient selection dropdown
 # ------------------------------
-patient_options = patients_df["patient_id"].tolist()
-selected_patient = st.selectbox("Select a patient to view", patient_options)
+# patient_options = patients_df["patient_id"].tolist()
+# selected_patient = st.selectbox("Select a patient to view", patient_options)
+
+# ---------- Load patient list ----------
+patients_list = get_all_patients(supabase)
+
+if not patients_list:
+    st.warning("No patients found. Please add a patient first in Add Patient page.")
+    st.stop()
+
+selected_patient = st.selectbox("Select Patient", patients_list)
 
 if selected_patient:
 
