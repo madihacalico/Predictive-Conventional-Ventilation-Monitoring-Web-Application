@@ -123,10 +123,10 @@ if selected_patient:
     for col in ["tv", "etco2", "spo2", "pplat"]:
         fig = px.line(
             plot_df,
-            x="Time",
+            x="time_interval",
             y=col,
             title=f"{COL_DISPLAY_NAMES[col]} over {COL_DISPLAY_NAMES['time_interval']}",
-            labels={col: COL_DISPLAY_NAMES[col], "time": COL_DISPLAY_NAMES["time_interval"]},
+            labels={col: COL_DISPLAY_NAMES[col], "time_interval": COL_DISPLAY_NAMES["time_interval"]},
             markers=True
         )
         st.plotly_chart(fig, width="stretch")
