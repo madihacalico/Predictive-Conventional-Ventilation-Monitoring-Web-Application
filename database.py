@@ -133,23 +133,23 @@ def get_vent_settings(supabase, patient_id, time):
     return response.data
 
 # Get observed data history for patient
-def get_observed_data(
-    supabase: Client,
-    patient_id: str
-) -> pd.DataFrame:
-    """
-    Fetch observed (E) data for a patient, ordered by time.
-    """
-    response = (
-        supabase
-        .table("observed_data")
-        .select("*")
-        .eq("patient_id", patient_id)
-        .order("time_interval")
-        .execute()
-    )
+# def get_observed_data(
+#     supabase: Client,
+#     patient_id: str
+# ) -> pd.DataFrame:
+#     """
+#     Fetch observed (E) data for a patient, ordered by time.
+#     """
+#     response = (
+#         supabase
+#         .table("observed_data")
+#         .select("*")
+#         .eq("patient_id", patient_id)
+#         .order("time_interval")
+#         .execute()
+#     )
 
-    return pd.DataFrame(response.data)
+#     return pd.DataFrame(response.data)
 
 # Get predictions history for patient
 def get_predictions(
@@ -169,6 +169,23 @@ def get_predictions(
     )
 
     return pd.DataFrame(response.data)
+
+# Get observed data
+def get_observed_data(supabase, patient_id, time):
+    """
+    Fetch observed data for a patient at a specific time
+    """
+    response = (
+        supabase
+        .table("observed_data")
+        .select("*")
+        .eq("patient_id", patient_id)
+        .eq("time_interval", time)
+        .single()
+        .execute()
+    )
+
+    return response.data
 
 # Get derived features
 def get_derived_features(supabase, patient_id, time):

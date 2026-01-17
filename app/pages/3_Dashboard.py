@@ -71,7 +71,15 @@ if selected_patient:
     # vent_df = pd.DataFrame(vent_resp.data)
 
     # Observed data
-    obs_df = get_observed_data(supabase, selected_patient)
+    obs_resp = (
+        supabase
+        .table("observed_data")
+        .select("*")
+        .eq("patient_id", selected_patient)
+        .order("time_interval")
+        .execute()
+    )
+    obs_df = pd.DataFrame(obs_resp.data)
 
     # Predictions
     pred_df = get_predictions(supabase, selected_patient)
