@@ -123,7 +123,7 @@ if selected_patient:
     for col in ["tv", "etco2", "spo2", "pplat"]:
         fig = px.line(
             plot_df,
-            x="time_interval",
+            x="Time",
             y=col,
             title=f"{COL_DISPLAY_NAMES[col]} over {COL_DISPLAY_NAMES['time_interval']}",
             labels={col: COL_DISPLAY_NAMES[col], "time": COL_DISPLAY_NAMES["time_interval"]},
