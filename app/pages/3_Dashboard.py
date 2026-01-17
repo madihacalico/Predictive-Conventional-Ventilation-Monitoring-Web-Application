@@ -11,7 +11,14 @@ import pandas as pd
 import sqlite3
 import plotly.express as px
 from Home import init_connection
-from database import get_observed_data, get_predictions, get_all_patients
+from database import get_predictions, get_all_patients
+import io
+import plotly.io as pio
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image, Table, TableStyle
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.lib.pagesizes import A4
+from reportlab.lib import colors
+
 
 # ------------------------------
 # Supabase connection
@@ -104,12 +111,14 @@ if selected_patient:
     COL_DISPLAY_NAMES = {
         "time_interval": "Time (min)",
         "tv": "Tidal Volume (TV)",
-        "etco2": "ETCO₂",
-        "spo2": "SpO₂",
+        "etco2": "ETCO2",
+        "spo2": "SpO2",
         "pplat": "Plateau Pressure"
     }
     
     st.markdown("### Ventilation Parameters Over Time")
+
+    figures = {}
 
     for col in ["tv", "etco2", "spo2", "pplat"]:
         fig = px.line(
@@ -117,10 +126,12 @@ if selected_patient:
             x="time_interval",
             y=col,
             title=f"{COL_DISPLAY_NAMES[col]} over {COL_DISPLAY_NAMES['time_interval']}",
-            labels={col: COL_DISPLAY_NAMES[col], "time": COL_DISPLAY_NAMES["time_interval"]},
+            labels={col: COL_DISPLAY_NAMES[col], "time_interval": COL_DISPLAY_NAMES["time_interval"]},
             markers=True
         )
         st.plotly_chart(fig, width="stretch")
+
+        figures[COL_DISPLAY_NAMES[col]] = fig
 
     # ------------------------------
     # Display table of historical target status (G)
@@ -130,8 +141,8 @@ if selected_patient:
     STATUS_DISPLAY_NAMES = {
         "time_interval": "Time (min)",
         "tv_in_range_next": "TV",
-        "etco2_in_range_next": "ETCO₂",
-        "spo2_in_range_next": "SpO₂",
+        "etco2_in_range_next": "ETCO2",
+        "spo2_in_range_next": "SpO2",
         "pplat_in_range_next": "Plateau Pressure"
     }
     status_cols = list(STATUS_DISPLAY_NAMES.keys())
@@ -149,8 +160,8 @@ if selected_patient:
     # ------------------------------
     out_of_range_times = status_df[
         (status_df["TV"] == "Out of Range") |
-        (status_df["ETCO₂"] == "Out of Range") |
-        (status_df["SpO₂"] == "Out of Range") |
+        (status_df["ETCO2"] == "Out of Range") |
+        (status_df["SpO2"] == "Out of Range") |
         (status_df["Plateau Pressure"] == "Out of Range")
     ]["Time (min)"].tolist()
 
@@ -159,3 +170,72 @@ if selected_patient:
     else:
         st.success("All parameters predicted to remain in range for this patient.")
 
+
+def generate_dashboard_pdf(patient_id, figures: dict, status_df: pd.DataFrame):
+    """
+    Generate a PDF report for a patient with Plotly charts and prediction history table.
+    
+    Parameters:
+    - patient_id: str, selected patient ID
+    - figures: dict of Plotly figures, e.g., {'Tidal Volume (TV)': fig, ...}
+    - status_df: pandas DataFrame containing prediction history
+    """
+    # Create temporary PDF in memory
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=A4)
+    styles = getSampleStyleSheet()
+    elements = []
+
+    # --- Title ---
+    elements.append(Paragraph(
+        f"<b>Ventilation Dashboard Overview</b><br/>Patient ID: {patient_id}",
+        styles["Title"]
+    ))
+    elements.append(Spacer(1, 16))
+
+    # --- Charts ---
+    for title, fig in figures.items():
+        # Export Plotly figure to PNG in memory
+        img_bytes = fig.to_image(format="png", width=800, height=450, engine="kaleido")
+        img_buffer = io.BytesIO(img_bytes)
+
+        elements.append(Paragraph(f"<b>{title}</b>", styles["Heading2"]))
+        elements.append(Spacer(1, 8))
+        elements.append(Image(img_buffer, width=500, height=280))
+        elements.append(Spacer(1, 16))
+
+    # --- Prediction Table ---
+    elements.append(Paragraph("<b>Target Status Prediction History</b>", styles["Heading2"]))
+    elements.append(Spacer(1, 8))
+
+    table_data = [status_df.columns.tolist()] + status_df.values.tolist()
+    table = Table(table_data, repeatRows=1)
+    table.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), colors.lightgrey),
+        ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+        ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+        ("FONT", (0, 0), (-1, 0), "Helvetica-Bold"),
+    ]))
+    elements.append(table)
+
+    # Build PDF in memory
+    doc.build(elements)
+    buffer.seek(0)
+    return buffer  # return in-memory PDF
+
+
+st.markdown("---")
+
+if st.button("📄 Export Overview (PDF)"):
+    pdf_buffer = generate_dashboard_pdf(
+        patient_id=selected_patient,
+        figures=figures,
+        status_df=status_df
+    )
+
+    st.download_button(
+        label="⬇️ Download PDF",
+        data=pdf_buffer,
+        file_name=f"patient_{selected_patient}_dashboard.pdf",
+        mime="application/pdf"
+    )
