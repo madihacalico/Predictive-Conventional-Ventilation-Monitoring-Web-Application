@@ -32,10 +32,10 @@ def add_vent_settings(supabase: Client, vent_data: dict):
     """
     response = supabase.table("vent_settings").upsert(
         vent_data,        # data to insert or update
-        on_conflict=("patient_id","time_interval")  # unique constraint on patient_id + time
+        on_conflict="patient_id,time_interval"  # unique constraint on patient_id + time
     ).execute()
     
-    return response
+    return response.data
 
 # Add observed data
 def add_observed_data(supabase: Client, observed_data: dict):
@@ -49,26 +49,23 @@ def add_observed_data(supabase: Client, observed_data: dict):
         
     response = supabase.table("observed_data").upsert(
         observed_data,        # data to insert or update
-        on_conflict=["patient_id", "time_interval"]  # unique constraint on patient_id + time
+        on_conflict="patient_id,time_interval"  # unique constraint on patient_id + time
     ).execute()
     
     return response.data
 
 # Add derived features
-def add_derived_features(conn, derived_features: dict):
-    """
-    derived_features: dictionary containing patient_id, time, and F fields
-    """
-
-    columns = ", ".join(derived_features.keys())
-    values = ", ".join([f":{k}" for k in derived_features.keys()])
-
-    sql = f"""
-    INSERT INTO derived_features ({columns}) 
-    VALUES ({values})
-    """
-
-    conn.execute(text(sql), derived_features)
+def add_derived_features(supabase: Client, derived_features: dict):
+    response = (
+        supabase
+        .table("derived_features")
+        .upsert(
+            derived_features,
+            on_conflict="patient_id,time_interval"
+        )
+        .execute()
+    )
+    return response.data
 
 # Add predictions
 def add_prediction(supabase: Client, patient_id: str, time_input: int, predictions: dict):
@@ -85,7 +82,7 @@ def add_prediction(supabase: Client, patient_id: str, time_input: int, predictio
     }
     response = supabase.table("predictions").upsert(
         data,
-        on_conflict=["patient_id", "time_interval"]
+        on_conflict="patient_id,time_interval"
     ).execute()
     return response.data
 
