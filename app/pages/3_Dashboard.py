@@ -77,14 +77,14 @@ if selected_patient:
     # Use observed values for TV, ETCO2, SPO2, Pplat
     plot_df = obs_df[
         ["time_interval", "tv", "etco2", "spo2", "pplat"]
-        ].rename(columns={"time_interval": "time"})
+        ]
 
     # ------------------------------
     # Plot each variable
     # ------------------------------
 
     COL_DISPLAY_NAMES = {
-        "time": "Time (min)",
+        "time_interval": "Time (min)",
         "tv": "Tidal Volume (TV)",
         "etco2": "ETCO₂",
         "spo2": "SpO₂",
@@ -96,10 +96,10 @@ if selected_patient:
     for col in ["tv", "etco2", "spo2", "pplat"]:
         fig = px.line(
             plot_df,
-            x="time",
+            x="time_interval",
             y=col,
-            title=f"{COL_DISPLAY_NAMES[col]} over {COL_DISPLAY_NAMES['time']}",
-            labels={col: COL_DISPLAY_NAMES[col], "time": COL_DISPLAY_NAMES["time"]},
+            title=f"{COL_DISPLAY_NAMES[col]} over {COL_DISPLAY_NAMES['time_interval']}",
+            labels={col: COL_DISPLAY_NAMES[col], "time": COL_DISPLAY_NAMES["time_interval"]},
             markers=True
         )
         st.plotly_chart(fig, width="stretch")
@@ -110,7 +110,7 @@ if selected_patient:
     st.markdown("### Target Status Prediction History")
 
     STATUS_DISPLAY_NAMES = {
-        "time": "Time (min)",
+        "time_interval": "Time (min)",
         "tv_in_range_next": "TV",
         "etco2_in_range_next": "ETCO₂",
         "spo2_in_range_next": "SpO₂",
