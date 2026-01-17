@@ -7,3 +7,5 @@ sqlalchemy
 st-supabase-connection
 psycopg2-binary
 supabase
+reportlab
+kaleido
