@@ -116,6 +116,14 @@ if selected_patient:
         "pplat": "Plateau Pressure"
     }
     
+    PDF_LABEL_MAP = {
+        "time_interval": "Time (min)",
+        "tv": "TV",
+        "etco2": "ETCO2",
+        "spo2": "SpO2",
+        "pplat":"Plateau Pressure"
+    }
+
     st.markdown("### Ventilation Parameters Over Time")
 
     figures = {}
@@ -148,6 +156,13 @@ if selected_patient:
     status_cols = list(STATUS_DISPLAY_NAMES.keys())
     status_df = pred_df[status_cols].copy()
 
+    # for the PDF export
+    pdf_status_df = status_df.copy()
+
+    pdf_status_df.columns = [
+        PDF_LABEL_MAP.get(col, col) for col in pdf_status_df.columns
+    ]
+
     # Map 0/1 to human-readable except for time
     status_df[list(STATUS_DISPLAY_NAMES.keys())[1:]] = status_df[list(STATUS_DISPLAY_NAMES.keys())[1:]].replace({0: "Out of Range", 1: "In Range"})
     # Rename columns for display
@@ -170,8 +185,7 @@ if selected_patient:
     else:
         st.success("All parameters predicted to remain in range for this patient.")
 
-
-def generate_dashboard_pdf(patient_id, figures: dict, status_df: pd.DataFrame):
+def generate_dashboard_pdf(patient_id, figures: dict, pdf_status_df: pd.DataFrame):
     """
     Generate a PDF report for a patient with Plotly charts and prediction history table.
     
@@ -199,7 +213,9 @@ def generate_dashboard_pdf(patient_id, figures: dict, status_df: pd.DataFrame):
         img_bytes = fig.to_image(format="png", width=800, height=450, engine="kaleido")
         img_buffer = io.BytesIO(img_bytes)
 
-        elements.append(Paragraph(f"<b>{title}</b>", styles["Heading2"]))
+        pdf_title = PDF_LABEL_MAP.get(title, title)
+        elements.append(Paragraph(f"<b>{pdf_title}</b>", styles["Heading2"]))
+        # elements.append(Paragraph(f"<b>{title}</b>", styles["Heading2"]))
         elements.append(Spacer(1, 8))
         elements.append(Image(img_buffer, width=500, height=280))
         elements.append(Spacer(1, 16))
@@ -208,7 +224,7 @@ def generate_dashboard_pdf(patient_id, figures: dict, status_df: pd.DataFrame):
     elements.append(Paragraph("<b>Target Status Prediction History</b>", styles["Heading2"]))
     elements.append(Spacer(1, 8))
 
-    table_data = [status_df.columns.tolist()] + status_df.values.tolist()
+    table_data = [pdf_status_df.columns.tolist()] + pdf_status_df.values.tolist()
     table = Table(table_data, repeatRows=1)
     table.setStyle(TableStyle([
         ("BACKGROUND", (0, 0), (-1, 0), colors.lightgrey),
@@ -230,7 +246,7 @@ if st.button("📄 Export Overview (PDF)"):
     pdf_buffer = generate_dashboard_pdf(
         patient_id=selected_patient,
         figures=figures,
-        status_df=status_df
+        pdf_status_df=pdf_status_df
     )
 
     st.download_button(
